@@ -113,7 +113,7 @@ class _BetCell extends StatelessWidget {
               children: <Widget>[
                 // Reserve minimal consistent top space so name position doesn't jump when funded.
                 SizedBox(
-                  height: 12,
+                  height: 8,
                   child: (_funded && enabled)
                       ? Align(
                           alignment: Alignment.topRight,
@@ -152,7 +152,7 @@ class _BetCell extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 SizedBox(
-                  height: 20,
+                  height: 18,
                   child: _funded
                       ? Center(child: _StakeChip(amount: amount))
                       : const SizedBox.shrink(),

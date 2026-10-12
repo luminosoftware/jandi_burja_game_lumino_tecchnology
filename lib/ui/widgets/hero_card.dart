@@ -82,7 +82,7 @@ class RollButton extends StatelessWidget {
         onPressed: controller.canRoll ? onRoll : null,
         style: FilledButton.styleFrom(
           backgroundColor: GameColors.brass,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 12),
         ),
         child: const Text(
           'ROLL THE DICE',

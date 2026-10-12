@@ -6,7 +6,7 @@ import '../../services/rewarded_ad_service.dart';
 import '../../state/game_controller.dart';
 import '../widgets/betting_board.dart';
 import '../widgets/coin_picker.dart';
-import '../widgets/felt_backdrop.dart';
+import '../widgets/felt_backdrop.dart'; 
 import '../widgets/hero_card.dart';
 import 'roll_screen.dart';
 import 'more_screen.dart';
@@ -76,7 +76,7 @@ class GameScreen extends StatelessWidget {
                 _TopBar(controller: c),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+                    padding: const EdgeInsets.fromLTRB(14, 2, 14, 4),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 760),
@@ -84,25 +84,29 @@ class GameScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             HeroCard(controller: c),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8),
                             BetAmount(controller: c),
                             if (c.lastRejection != null) ...<Widget>[
                               const SizedBox(height: 6),
                               _RejectionNotice(rejection: c.lastRejection!),
                             ],
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 10),
                             BettingBoard(
                               controller: c,
                               bets: c.wallet.bets,
                               enabled: !locked,
                             ),
-                            const SizedBox(height: 6),
+                            // The widest gap on the screen sits between the
+                            // symbols and the coins: the board is where the bet
+                            // is named, the coins are how it is paid for, and
+                            // the space is what says those are two steps.
+                            const SizedBox(height: 18),
                             CoinPicker(
                               selected: c.wallet.selectedChip,
                               enabled: !locked,
                               onSelect: c.selectChip,
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 10),
                             // Under the coins rather than above the board, so
                             // the order on screen runs the way the round does:
                             // pick a coin, place it, fix a mistake.
@@ -116,7 +120,7 @@ class GameScreen extends StatelessWidget {
                 // Pinned outside the scroll view: the one control that matters
                 // most must stay reachable on a small phone without scrolling.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 760),
@@ -150,8 +154,9 @@ class GameScreen extends StatelessWidget {
 ///
 /// It only picks which dice the single ROLL THE DICE button uses: it stages
 /// nothing, spends nothing and is therefore never gated on a round being ready.
-/// Two short labels rather than an icon keep the choice legible at a glance and
-/// still fit beside the title on the narrowest phone.
+/// A switch with a label on either side reads as a choice between two named
+/// states rather than as an action, and both labels are tappable so the mode can
+/// be picked from whichever side the eye lands on.
 class _ThrowModeToggle extends StatelessWidget {
   const _ThrowModeToggle({required this.controller});
 
@@ -159,25 +164,63 @@ class _ThrowModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool is3d = controller.throw3d;
     return Tooltip(
       message: 'Dice style: 2D or 3D',
-      child: SegmentedButton<bool>(
-        segments: const <ButtonSegment<bool>>[
-          ButtonSegment<bool>(value: false, label: Text('2D')),
-          ButtonSegment<bool>(value: true, label: Text('3D')),
-        ],
-        selected: <bool>{controller.throw3d},
-        onSelectionChanged: (Set<bool> selection) =>
-            controller.setThrow3d(selection.first),
-        showSelectedIcon: false,
-        style: const ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          _ModeLabel(
+            text: '2D',
+            active: !is3d,
+            onTap: () => controller.setThrow3d(false),
           ),
-          textStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+          Switch(
+            value: is3d,
+            onChanged: controller.setThrow3d,
+            activeThumbColor: GameColors.ink,
+            activeTrackColor: GameColors.brass,
+            inactiveThumbColor: GameColors.cream,
+            inactiveTrackColor: GameColors.feltMid,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          _ModeLabel(
+            text: '3D',
+            active: is3d,
+            onTap: () => controller.setThrow3d(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One side of [_ThrowModeToggle]: a short label that also selects its mode.
+class _ModeLabel extends StatelessWidget {
+  const _ModeLabel({
+    required this.text,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String text;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: active ? GameColors.brass : const Color(0xFF9FB6AA),
+            fontSize: 12,
+            fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+            letterSpacing: 0.5,
           ),
         ),
       ),

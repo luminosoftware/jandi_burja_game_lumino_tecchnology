@@ -871,11 +871,10 @@ void main() {
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      final SegmentedButton<bool> toggle = tester.widget(
-        find.byType(SegmentedButton<bool>),
-      );
-      expect(toggle.segments.length, 2);
-      expect(toggle.selected, <bool>{false});
+      // Both sides are labelled and the switch sits between them, off.
+      expect(find.text('2D'), findsOneWidget);
+      expect(find.text('3D'), findsOneWidget);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
       expect(c.throw3d, isFalse);
 
       // The throw is a single control now: no second button beside it.
@@ -887,7 +886,7 @@ void main() {
       c.dispose();
     });
 
-    testWidgets('switches the throw to 3D when the segment is tapped', (
+    testWidgets('switches the throw to 3D when the label is tapped', (
       WidgetTester tester,
     ) async {
       final GameController c = await buildController();
@@ -898,12 +897,18 @@ void main() {
       await tester.pump();
 
       expect(c.throw3d, isTrue);
-      expect(
-        tester
-            .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
-            .selected,
-        <bool>{true},
-      );
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+      // The switch itself toggles back, and the 2D label selects 2D too.
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+      expect(c.throw3d, isFalse);
+
+      await tester.tap(find.text('3D'));
+      await tester.pump();
+      await tester.tap(find.text('2D'));
+      await tester.pump();
+      expect(c.throw3d, isFalse);
       c.dispose();
     });
 
@@ -953,7 +958,7 @@ void main() {
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+      expect(find.byType(Switch), findsOneWidget);
       final Size roll = tester.getSize(
         find.widgetWithText(FilledButton, 'ROLL THE DICE'),
       );

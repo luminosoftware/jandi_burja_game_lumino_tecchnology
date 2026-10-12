@@ -84,7 +84,7 @@ class _Coin extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           onTap: enabled ? onTap : null,
           child: Container(
-            height: 48,
+            height: 44,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
