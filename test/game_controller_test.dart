@@ -262,6 +262,24 @@ void main() {
     c.dispose();
   });
 
+  test('the 3D dice preference persists across a restart', () async {
+    final GameController c = await openController();
+    expect(c.throw3d, isFalse, reason: 'a fresh install opens on the 2D dice');
+
+    await c.setThrow3d(true);
+    c.dispose();
+
+    // A second controller over the same preferences, as if relaunched.
+    final StorageService storage = await StorageService.open();
+    final GameController second = GameController(
+      storage: storage,
+      ads: FakeRewardedAdService(),
+      roller: DiceRoller(random: Random(11)),
+    );
+    expect(second.throw3d, isTrue);
+    second.dispose();
+  });
+
   test(
     'a pending ad retry reports failure when the ad never arrives',
     () async {

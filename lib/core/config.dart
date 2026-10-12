@@ -72,4 +72,11 @@ class AppConfig {
   // ------------------------------------------------------------------ audio
   static const bool soundEnabledByDefault = true;
   static const bool hapticsEnabledByDefault = true;
+
+  // ------------------------------------------------------------------- throw
+  /// Whether the throw screen starts in its 3D dice mode.
+  ///
+  /// The player can switch this at any time with the 2D/3D toggle in the top
+  /// bar; this is only the value a fresh install opens on.
+  static const bool throw3dByDefault = false;
 }

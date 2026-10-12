@@ -83,6 +83,7 @@ flutter:
   # `python3 tools/generate_assets.py`.
   assets:
     - assets/symbols/
+    - assets/images/
     - assets/felt/
     - assets/audio/
     - assets/dice.glb

@@ -8,11 +8,8 @@ import '../widgets/betting_board.dart';
 import '../widgets/coin_picker.dart';
 import '../widgets/felt_backdrop.dart';
 import '../widgets/hero_card.dart';
-import 'dice_lab_screen.dart';
-import 'help_screen.dart';
 import 'roll_screen.dart';
-import 'settings_screen.dart';
-import 'stats_screen.dart';
+import 'more_screen.dart';
 
 /// The betting table: quick actions, balance, the six symbols, and the throw.
 /// Deliberately contains no dice. The throw happens on its own screen, so this
@@ -44,13 +41,12 @@ class GameScreen extends StatelessWidget {
     await controller.clearBoard();
   }
 
-  /// The 2D throw.
-  Future<void> _roll(BuildContext context) => _throw(context, throw3d: false);
-
-  /// The real-money 3D throw: same round, dice that are actually three
-  /// dimensional.
-  Future<void> _roll3d(BuildContext context) =>
-      _throw(context, throw3d: true);
+  /// The throw, in whichever style the top-bar toggle has selected.
+  ///
+  /// The mode is read at the moment of the tap rather than captured anywhere, so
+  /// switching the toggle is all it takes to change what this button does.
+  Future<void> _roll(BuildContext context) =>
+      _throw(context, throw3d: controller.throw3d);
 
   @override
   Widget build(BuildContext context) {
@@ -124,31 +120,9 @@ class GameScreen extends StatelessWidget {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 760),
-                      child: LayoutBuilder(
-                        builder: (BuildContext context, BoxConstraints constraints) {
-                          // Below about a third of a normal phone's width the
-                          // labels no longer fit side by side, and the row
-                          // would squeeze the throw. The 3D throw is the one
-                          // that gives up its label, because the throw is the
-                          // control that has to be obvious.
-                          final bool compact = constraints.maxWidth < 340;
-                          return Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: RollButton(
-                                  controller: c,
-                                  onRoll: () => _roll(context),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _ThreeDThrowButton(
-                                controller: c,
-                                onRoll: () => _roll3d(context),
-                                compact: compact,
-                              ),
-                            ],
-                          );
-                        },
+                      child: RollButton(
+                        controller: c,
+                        onRoll: () => _roll(context),
                       ),
                     ),
                   ),
@@ -172,106 +146,40 @@ class GameScreen extends StatelessWidget {
   }
 }
 
-/// The real-money 3D throw, kept level with [RollButton] so the two ways to
-/// roll are found in the same place.
+/// The 2D/3D switch for the throw, in the top bar.
 ///
-/// It sits beside the roll rather than buried in the top bar because it is the
-/// same round as the roll: it stages nothing of its own, it needs the same
-/// wagers and it goes live at the same moment, so gating it on
-/// [GameController.canRoll] rather than on a practice screen's "always open" is
-/// what keeps the two buttons honest. The free throw lives in the top bar,
-/// where nothing about it can be mistaken for a wager.
-class _ThreeDThrowButton extends StatelessWidget {
-  const _ThreeDThrowButton({
-    required this.controller,
-    required this.onRoll,
-    this.compact = false,
-  });
+/// It only picks which dice the single ROLL THE DICE button uses: it stages
+/// nothing, spends nothing and is therefore never gated on a round being ready.
+/// Two short labels rather than an icon keep the choice legible at a glance and
+/// still fit beside the title on the narrowest phone.
+class _ThrowModeToggle extends StatelessWidget {
+  const _ThrowModeToggle({required this.controller});
 
   final GameController controller;
 
-  /// Pushes the throw, exactly as [RollButton.onRoll] does.
-  final VoidCallback onRoll;
-
-  /// Whether to drop the label and show the cube on its own.
-  final bool compact;
-
   @override
   Widget build(BuildContext context) {
-    final ButtonStyle style = OutlinedButton.styleFrom(
-      foregroundColor: GameColors.brass,
-      side: BorderSide(color: GameColors.brass.withValues(alpha: 0.55)),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
-    );
-
-    // Disabled alongside ROLL THE DICE, not on its own schedule: a 3D throw
-    // with nothing staged would push a screen that has no round to run.
-    final VoidCallback? throw3d = controller.canRoll ? onRoll : null;
-
-    // The label is the only thing saying what this is, so it goes only when
-    // there is genuinely no room for it. A tooltip is not a substitute for it
-    // and is not pretending to be, it is what a short tap has instead.
-    if (compact) {
-      return Tooltip(
-        message: 'Throw in 3D',
-        child: OutlinedButton(
-          onPressed: throw3d,
-          style: style,
-          child: const Icon(Icons.view_in_ar_outlined, size: 20),
+    return Tooltip(
+      message: 'Dice style: 2D or 3D',
+      child: SegmentedButton<bool>(
+        segments: const <ButtonSegment<bool>>[
+          ButtonSegment<bool>(value: false, label: Text('2D')),
+          ButtonSegment<bool>(value: true, label: Text('3D')),
+        ],
+        selected: <bool>{controller.throw3d},
+        onSelectionChanged: (Set<bool> selection) =>
+            controller.setThrow3d(selection.first),
+        showSelectedIcon: false,
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          ),
+          textStyle: WidgetStatePropertyAll(
+            TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
+          ),
         ),
-      );
-    }
-    return OutlinedButton.icon(
-      onPressed: throw3d,
-      icon: const Icon(Icons.view_in_ar_outlined, size: 20),
-      label: const Text('3D DICE'),
-      style: style,
-    );
-  }
-}
-
-/// The free throw, in the top bar where the practice table has always been
-/// expected to be.
-///
-/// Labelled whenever there is room for the words and icon-only below that: at
-/// 320px a permanent label would push the app title off the screen, and the
-/// title is the one thing on this bar that cannot be reached from anywhere
-/// else. [labelled] is decided by [_TopBar]'s own width, so the choice tracks
-/// the phone rather than a hard-coded breakpoint somewhere else.
-class _CustomDiceButton extends StatelessWidget {
-  const _CustomDiceButton({required this.controller, required this.labelled});
-
-  final GameController controller;
-
-  final bool labelled;
-
-  void _openPractice(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => DiceLabScreen(controller: controller),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!labelled) {
-      return IconButton(
-        tooltip: 'Custom 3D dice',
-        icon: const Icon(Icons.threed_rotation),
-        onPressed: () => _openPractice(context),
-      );
-    }
-    return OutlinedButton.icon(
-      onPressed: () => _openPractice(context),
-      icon: const Icon(Icons.threed_rotation, size: 18),
-      label: const Text('CUSTOM 3D DICE'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: GameColors.brass,
-        side: BorderSide(color: GameColors.brass.withValues(alpha: 0.55)),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -282,73 +190,42 @@ class _TopBar extends StatelessWidget {
 
   final GameController controller;
 
-  /// Below this the label on [_CustomDiceButton] no longer fits beside the app
-  /// title without pushing it into a second line or off a small phone, so the
-  /// control drops to its icon.
-  ///
-  /// The title is given an ellipsis rather than being allowed to wrap, so
-  /// whatever is left over is always one line and this threshold is the only
-  /// thing deciding how the bar looks.
-  static const double _labelledWidth = 480;
-
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        // The free-throw control sits between the help icon and the title, so
-        // the bar stays balanced: two controls left, two right, and the title
-        // centred between them rather than drifting.
-        final bool labelled = constraints.maxWidth >= _labelledWidth;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
-          child: Row(
-            children: <Widget>[
-              IconButton(
-                tooltip: 'Rules',
-                icon: const Icon(Icons.help_outline),
-                onPressed: () => Navigator.of(
-                  context,
-                ).push(
-                  MaterialPageRoute<void>(builder: (_) => const HelpScreen()),
-                ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+      child: Row(
+        children: <Widget>[
+          IconButton(
+            tooltip: 'Menu',
+            icon: Image.asset(
+              'assets/images/appbar.png',
+              width: 34,
+              height: 34,
+            ),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => MoreScreen(controller: controller),
               ),
-              _CustomDiceButton(controller: controller, labelled: labelled),
-              const Expanded(
-                child: Text(
-                  AppConfig.appName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: GameColors.brass,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2.5,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Statistics',
-                icon: const Icon(Icons.insights_outlined),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => StatsScreen(controller: controller),
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.tune),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SettingsScreen(controller: controller),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          const Expanded(
+            child: Text(
+              AppConfig.appName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: GameColors.brass,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.5,
+              ),
+            ),
+          ),
+          _ThrowModeToggle(controller: controller),
+        ],
+      ),
     );
   }
 }

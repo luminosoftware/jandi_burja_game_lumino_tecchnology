@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../models/symbol.dart';
 import '../../state/game_controller.dart';
@@ -102,57 +101,62 @@ class _BetCell extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: enabled ? onAdd : null,
           onLongPress: _funded && enabled ? onAddHalf : null,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: border, width: _funded ? 2 : 1),
-            ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: border, width: 2),
+              ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                // Long-press doubles a wager, so the shortcut is discoverable.
-                if (_funded && enabled)
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: InkResponse(
-                      onTap: onRemove,
-                      radius: 16,
-                      child: const Padding(
-                        padding: EdgeInsets.all(2),
-                        child: Icon(
-                          Icons.remove_circle_outline,
-                          size: 18,
-                          color: GameColors.cream,
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 2),
-                SymbolIcon(symbol, size: 30, color: GameColors.cream),
-                const SizedBox(height: 3),
-                Text(
-                  symbol.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: GameColors.cream,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                // Reserve minimal consistent top space so name position doesn't jump when funded.
+                SizedBox(
+                  height: 12,
+                  child: (_funded && enabled)
+                      ? Align(
+                          alignment: Alignment.topRight,
+                          child: InkResponse(
+                            onTap: onRemove,
+                            radius: 12,
+                            child: const Icon(
+                              Icons.remove_circle_outline,
+                              size: 16,
+                              color: GameColors.cream,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   symbol.localName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Color(0xFF9FB6AA),
                     fontSize: 10,
                   ),
                 ),
                 const SizedBox(height: 2),
-                _StakeChip(amount: amount),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    symbol.whiteBgImageAsset,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                SizedBox(
+                  height: 20,
+                  child: _funded
+                      ? Center(child: _StakeChip(amount: amount))
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ),
@@ -175,10 +179,7 @@ class _StakeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (amount <= 0) {
-      return Text(
-        '+${AppConfig.minBet}',
-        style: const TextStyle(color: Color(0x7799AFA3), fontSize: 10),
-      );
+      return const SizedBox.shrink();
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

@@ -19,6 +19,7 @@ class StorageService {
   static const String _kStats = 'stats';
   static const String _kSound = 'sound_enabled';
   static const String _kHaptics = 'haptics_enabled';
+  static const String _kThrow3d = 'throw_3d';
   static const String _kAgeAck = 'age_acknowledged';
 
   static Future<StorageService> open() async =>
@@ -118,6 +119,10 @@ class StorageService {
 
   Future<void> saveHapticsEnabled(bool value) =>
       _prefs.setBool(_kHaptics, value);
+
+  bool loadThrow3d(bool fallback) => _prefs.getBool(_kThrow3d) ?? fallback;
+
+  Future<void> saveThrow3d(bool value) => _prefs.setBool(_kThrow3d, value);
 
   // -------------------------------------------------------------- age gate ack
   bool get ageAcknowledged => _prefs.getBool(_kAgeAck) ?? false;

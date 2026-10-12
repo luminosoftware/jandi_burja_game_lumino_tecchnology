@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:janda_burja_game_app/models/symbol.dart';
 
@@ -22,5 +23,27 @@ void main() {
       hasLength(Symbol.values.length),
       reason: 'two symbols sharing a die number would make the throw ambiguous',
     );
+  });
+
+  test('gives every symbol a distinct image asset', () {
+    final List<String> assets = Symbol.values
+        .map((Symbol s) => s.whiteBgImageAsset)
+        .toList();
+    expect(
+      assets.toSet(),
+      hasLength(Symbol.values.length),
+      reason: 'two symbols sharing art would show the wrong face on the result',
+    );
+    for (final String asset in assets) {
+      expect(asset, startsWith('assets/images/'));
+      expect(asset, endsWith('.png'));
+    }
+  });
+
+  testWidgets('the mapped images are bundled', (WidgetTester tester) async {
+    for (final Symbol s in Symbol.values) {
+      final data = await rootBundle.load(s.whiteBgImageAsset);
+      expect(data.lengthInBytes, greaterThan(0), reason: s.name);
+    }
   });
 }

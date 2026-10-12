@@ -45,4 +45,28 @@ enum Symbol {
     Symbol.flag => 5,
     Symbol.diamond => 6,
   };
+
+  /// The bundled artwork for this symbol, for the throw result grid.
+  ///
+  /// These are the painted assets in `assets/images/`, named after both the
+  /// English symbol and its local name. Kept apart from [dieNumber] so the
+  /// number contract with the 3D page is not disturbed by art changes.
+  String get imageAsset => switch (this) {
+    Symbol.crown => 'assets/images/crown-burja.png',
+    Symbol.flag => 'assets/images/flag-janda.png',
+    Symbol.heart => 'assets/images/love-paan.png',
+    Symbol.diamond => 'assets/images/diamond-itta.png',
+    Symbol.club => 'assets/images/club-chidi.png',
+    Symbol.spade => 'assets/images/spade-hukum.png',
+  };
+
+  /// Yellow background artwork for the betting board.
+  String get whiteBgImageAsset => switch (this) {
+    Symbol.crown => 'assets/images/burja-white-bg.png',
+    Symbol.flag => 'assets/images/janda-white-bg.png',
+    Symbol.heart => 'assets/images/paan-white-bg.png',
+    Symbol.diamond => 'assets/images/itta-white-bg.png',
+    Symbol.club => 'assets/images/chidi-white-bg.png',
+    Symbol.spade => 'assets/images/hukkum-white-bg.png',
+  };
 }

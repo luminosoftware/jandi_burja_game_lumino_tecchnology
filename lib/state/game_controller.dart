@@ -65,6 +65,7 @@ class GameController extends ChangeNotifier {
       sound: _storage.loadSoundEnabled(AppConfig.soundEnabledByDefault),
       haptics: _storage.loadHapticsEnabled(AppConfig.hapticsEnabledByDefault),
     );
+    _throw3d = _storage.loadThrow3d(AppConfig.throw3dByDefault);
     // An ad load finishes long after the call that started it, so the service
     // pushes state changes here rather than returning them.
     _ads.onStateChanged = _onAdStateChanged;
@@ -97,6 +98,12 @@ class GameController extends ChangeNotifier {
   bool _awaitingAdRetry = false;
   String? _adMessage;
   Timer? _adMessageTimer;
+
+  /// Whether the throw screen uses the 3D dice rather than [DieFaceView].
+  ///
+  /// A player preference rather than round state, so it survives a restart and
+  /// is read by the top-bar toggle and the throw button alike.
+  late bool _throw3d;
 
   // ------------------------------------------------------------------ getters
   Wallet get wallet => _wallet;
@@ -139,12 +146,13 @@ class GameController extends ChangeNotifier {
   bool get soundEnabled => _audio.soundEnabled;
   bool get hapticsEnabled => _audio.hapticsEnabled;
 
+  /// Whether the next throw uses the 3D dice.
+  bool get throw3d => _throw3d;
+
   /// The sound and haptics engine, for screens that are not part of a round.
   ///
-  /// Read only on purpose. The practice dice are free throws, so the one thing
-  /// they must never do is touch the wallet, and handing out the whole service
-  /// makes that a convention rather than a rule. Everything the practice screen
-  /// needs from a round it gets through the engine it already has.
+  /// Read only on purpose. Handing out the whole service rather than a pair of
+  /// play methods keeps the sound calls explicit at every call site.
   AudioService get audio => _audio;
   RewardedAdState get adState => _ads.state;
   String? get adMessage => _adMessage;
@@ -482,6 +490,14 @@ class GameController extends ChangeNotifier {
     notifyListeners();
     await _storage.saveHapticsEnabled(value);
     if (value) unawaited(_audio.haptic(HapticLevel.selection));
+  }
+
+  /// Switches the throw between the 2D dice and the 3D physics page.
+  Future<void> setThrow3d(bool value) async {
+    if (_throw3d == value) return;
+    _throw3d = value;
+    notifyListeners();
+    await _storage.saveThrow3d(value);
   }
 
   bool get ageAcknowledged => _storage.ageAcknowledged;

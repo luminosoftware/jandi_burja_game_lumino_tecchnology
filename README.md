@@ -131,6 +131,13 @@ page and the `.glb` over a loopback socket, which is why Android allows cleartex
 traffic and iOS has embedded views enabled. Everything else the page needs ships
 in the bundle, so a practice throw works offline like everything else.
 
+**It renders under Skia, not Impeller.** The Android manifest sets
+`io.flutter.embedding.android.EnableImpeller` to `false`. On Flutter 3.44.x,
+Impeller's OpenGLES backend mishandles platform view surfaces on some GPUs
+(notably ARM Mali), so the dice web view composites as blank and the felt shows
+through instead. Skia renders it correctly. Drop the flag once Flutter ships the
+engine fix (flutter/flutter#187505, PR #187545) in a stable release.
+
 ## Coins
 
 | Setting                   | Value              |

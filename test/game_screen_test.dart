@@ -9,13 +9,15 @@ import 'package:janda_burja_game_app/models/symbol.dart';
 import 'package:janda_burja_game_app/services/rewarded_ad_service.dart';
 import 'package:janda_burja_game_app/services/storage_service.dart';
 import 'package:janda_burja_game_app/state/game_controller.dart';
-import 'package:janda_burja_game_app/ui/screens/dice_lab_screen.dart';
 import 'package:janda_burja_game_app/ui/screens/disclosure_gate.dart';
 import 'package:janda_burja_game_app/ui/screens/game_screen.dart';
+import 'package:janda_burja_game_app/ui/screens/roll_screen.dart';
 import 'package:janda_burja_game_app/ui/widgets/die_face_view.dart';
 import 'package:janda_burja_game_app/ui/widgets/hero_card.dart';
 import 'package:janda_burja_game_app/ui/widgets/symbol_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/fake_dice_bridge.dart';
 
 /// Builds a controller backed by in-memory preferences and the fake ad service,
 /// so the whole game loop can be exercised on the Dart VM where the real AdMob
@@ -112,15 +114,12 @@ void useSmallPhone(WidgetTester tester) {
 }
 
 void main() {
-  // The 3D practice screen hosts a web view through a loopback HTTP server and
-  // a platform plugin, neither of which exists on the test VM. Every test that
-  // walks into that screen gets this placeholder instead.
-  setUp(() {
-    DiceLabScreen.viewerOverride = () => const SizedBox(key: Key('diceLabViewer'));
-  });
-  tearDown(() {
-    DiceLabScreen.viewerOverride = null;
-  });
+  // A 3D throw would otherwise open a loopback server and a platform web view,
+  // neither of which exists on the test VM. Tests that walk into one install a
+  // fake through this seam; clearing it keeps the fakes from leaking between
+  // tests.
+  setUp(() => RollScreen.bridgeOverride = null);
+  tearDown(() => RollScreen.bridgeOverride = null);
 
   testWidgets('renders the board, chips and all six symbols', (
     WidgetTester tester,
@@ -239,9 +238,18 @@ void main() {
       );
 
       await finishRound(tester);
-      // The result is stated on this screen, including the wager that was backed.
-      expect(find.textContaining('matched'), findsWidgets);
-      expect(find.textContaining('Balance'), findsOneWidget);
+      // The result is the six faces in a fixed 2x3 grid, and the throw screen
+      // carries no balance readout.
+      expect(find.byKey(const Key('result-grid')), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (Widget w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith('result-cell-'),
+        ),
+        findsNWidgets(AppConfig.diceCount),
+      );
+      expect(find.textContaining('Balance'), findsNothing);
 
       await tester.tap(find.text('PLAY AGAIN'));
       await tester.pumpAndSettle();
@@ -855,57 +863,89 @@ void main() {
     c.dispose();
   });
 
-  group('the practice table', () {
-    testWidgets('is offered next to the throw, not buried', (
+  group('the throw mode toggle', () {
+    testWidgets('offers both dice styles and defaults to 2D', (
       WidgetTester tester,
     ) async {
       final GameController c = await buildController();
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      expect(find.widgetWithText(OutlinedButton, '3D DICE'), findsOneWidget);
+      final SegmentedButton<bool> toggle = tester.widget(
+        find.byType(SegmentedButton<bool>),
+      );
+      expect(toggle.segments.length, 2);
+      expect(toggle.selected, <bool>{false});
+      expect(c.throw3d, isFalse);
+
+      // The throw is a single control now: no second button beside it.
       expect(
         find.widgetWithText(FilledButton, 'ROLL THE DICE'),
         findsOneWidget,
       );
+      expect(find.text('3D DICE'), findsNothing);
       c.dispose();
     });
 
-    testWidgets('opens the practice screen when tapped', (
+    testWidgets('switches the throw to 3D when the segment is tapped', (
       WidgetTester tester,
     ) async {
       final GameController c = await buildController();
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      await tester.tap(find.text('CUSTOM 3D DICE'));
-      await tester.pumpAndSettle();
-      expect(find.byType(DiceLabScreen), findsOneWidget);
+      await tester.tap(find.text('3D'));
+      await tester.pump();
+
+      expect(c.throw3d, isTrue);
+      expect(
+        tester
+            .widget<SegmentedButton<bool>>(find.byType(SegmentedButton<bool>))
+            .selected,
+        <bool>{true},
+      );
       c.dispose();
     });
 
-    testWidgets('returns to a table that is still playable', (
+    testWidgets('rolls on the 3D page when 3D is selected', (
       WidgetTester tester,
     ) async {
+      RollScreen.bridgeOverride = () => FakeDiceThrowBridge();
       final GameController c = await buildController(startingBalance: 500);
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      await tester.tap(find.text('CUSTOM 3D DICE'));
-      await tester.pumpAndSettle();
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await tester.tap(find.text('3D'));
+      await tester.pump();
+      await c.addBet(Symbol.crown);
+      await throwDice(tester);
 
-      // A visit to the practice table must not have staged, cleared or spent
-      // anything on the way in or out.
-      expect(c.wallet.totalBet, 0);
-      expect(c.wallet.balance, 500);
-      expect(c.phase, RollPhase.idle);
-      expect(find.text('CUSTOM 3D DICE'), findsOneWidget);
+      expect(find.byType(RollScreen), findsOneWidget);
+      expect(find.byKey(const Key('diceThrowViewer')), findsOneWidget);
       c.dispose();
     });
 
-    testWidgets('drops its label rather than crowding the throw', (
+    testWidgets('rolls on the 2D dice when 2D is selected', (
+      WidgetTester tester,
+    ) async {
+      RollScreen.bridgeOverride = () => FakeDiceThrowBridge();
+      final GameController c = await buildController(startingBalance: 500);
+      await tester.pumpWidget(wrap(c));
+      await tester.pump();
+
+      await c.addBet(Symbol.crown);
+      await throwDice(tester);
+
+      expect(find.byType(RollScreen), findsOneWidget);
+      expect(find.byKey(const Key('diceThrowViewer')), findsNothing);
+      expect(find.byType(DieFaceView), findsWidgets);
+
+      // Run the 950ms tumble out so no timer outlives the test.
+      await finishRound(tester);
+      c.dispose();
+    });
+
+    testWidgets('fits on the narrowest phone without crowding the throw', (
       WidgetTester tester,
     ) async {
       useSmallPhone(tester);
@@ -913,36 +953,12 @@ void main() {
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      // Pinned with the throw, so it is on screen rather than below the fold on
-      // the smallest phone the app is expected to run on, and the throw is the
-      // control that keeps its space.
-      expect(find.byIcon(Icons.threed_rotation), findsOneWidget);
-      expect(find.text('CUSTOM 3D DICE'), findsNothing);
-      expect(find.byTooltip('Custom 3D dice'), findsOneWidget);
-
+      expect(find.byType(SegmentedButton<bool>), findsOneWidget);
       final Size roll = tester.getSize(
         find.widgetWithText(FilledButton, 'ROLL THE DICE'),
       );
       expect(roll.width, greaterThan(200));
       expect(tester.takeException(), isNull);
-      c.dispose();
-    });
-
-    testWidgets('keeps its label when there is room for it', (
-      WidgetTester tester,
-    ) async {
-      final GameController c = await buildController(startingBalance: 500);
-      await tester.pumpWidget(wrap(c));
-      await tester.pump();
-
-      expect(find.text('CUSTOM 3D DICE'), findsOneWidget);
-      final Size roll = tester.getSize(
-        find.widgetWithText(FilledButton, 'ROLL THE DICE'),
-      );
-      expect(
-        roll.width,
-        greaterThan(tester.getSize(find.text('CUSTOM 3D DICE')).width * 2),
-      );
       c.dispose();
     });
   });

@@ -15,6 +15,16 @@
              above block by default. Scoped to the whole application attribute
              rather than a network security config because the only cleartext
              traffic in the app is that local server. -->
+        <!-- Render with Skia rather than Impeller on Android.
+             On Flutter 3.44.x, Impeller's OpenGLES backend mishandles platform
+             view surfaces on some GPUs (notably ARM Mali), so the 3D dice
+             WebView in dice_lab_web.dart composites as blank and the player
+             sees only the felt behind it. Skia renders it correctly. Remove
+             this once Flutter ships the engine fix (flutter/flutter#187505,
+             PR #187545) in a stable release. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
         <!-- AdMob application id.
              THIS IS GOOGLE'S OFFICIAL TEST ID. It serves dummy ads and earns no
              revenue. It is intentional during development: shipping with test ids

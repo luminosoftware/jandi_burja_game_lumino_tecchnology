@@ -7,30 +7,28 @@
 /// is the whole reason this screen is not another `CustomPainter` - the frame
 /// budget belongs to the throw, not to the widget tree.
 ///
-/// One page serves two screens, told apart by the `DICE_GAME` flag Dart writes
-/// immediately above the script:
+/// The page plays one role, the real-money throw ([buildGameThrowViewer]):
+/// always the game's six dice, no chrome, no tap to rethrow, and the faces are
+/// not the page's to choose - Dart sends them in and waits for the page to
+/// report that they have landed. Its seam back into Flutter is two
+/// [JavascriptChannel]s, `DiceReady` and `DiceSettled`.
 ///
-/// * **Practice** ([buildDiceLabViewer]) - free throws, 1..6 dice chosen on the
-///   page, history and a dice-count picker, the player decides when to throw.
-///   Its seam back into Flutter is two [JavascriptChannel]s called from
-///   [diceLabJs]: `DiceNav` for the back arrow in the page's app bar, and
-///   `DiceAudio` on every throw so the practice table is not the one screen in
-///   the app that is silent.
-/// * **The real-money throw** ([buildGameThrowViewer]) - always the game's six
-///   dice, no chrome, no tap to rethrow, and the faces are not the page's to
-///   choose: Dart sends them in and waits for the page to report that they have
-///   landed. Its seam is the other two channels, `DiceReady` and `DiceSettled`.
-///
-/// Neither channel is optional at its call site: all four are guarded in JS,
-/// because a missing channel must degrade to "no sound, no shortcut" rather
-/// than to a `JS ERROR` banner over the dice.
+/// The engine still carries a practice-only branch behind `DICE_GAME`, left in
+/// place because it is the same simulation the real throw runs. Nothing reaches
+/// it any more.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
-import 'package:webview_flutter/webview_flutter.dart' show WebViewController;
+import 'package:webview_flutter/webview_flutter.dart'
+    show
+        JavaScriptConsoleMessage,
+        NavigationDecision,
+        NavigationDelegate,
+        WebResourceError,
+        WebViewController;
 
 import '../../core/config.dart';
 import '../../models/symbol.dart';
@@ -66,7 +64,7 @@ html, body {
 #bar {
   position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 10;
   display: flex; align-items: center; padding: 0 6px 0 6px; box-sizing: border-box;
-  background: #14501a; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  background: #0d3b2a; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4);
 }
 /* Left padding matches the bar's, and the back arrow sits inside it, so the
    title starts after the arrow instead of underneath it. */
@@ -124,6 +122,11 @@ html, body {
 /// * `buildUI()` puts a back arrow in the app bar that posts to `DiceNav`.
 const String diceLabJs = r'''
 (function () {
+  // TEMPORARY diagnostics: prove the injected script ran at all on a device
+  // that shows a blank table, and surface any parse/runtime error immediately.
+  window.onerror = function (m, u, l) { console.error('DICEJS error: ' + m + ' @' + l); };
+  console.log('DICEJS boot game=' + DICE_GAME + ' count=' + DICE_COUNT +
+    ' elem=' + !!document.getElementById('dice'));
   // ================== TWEAK THESE ==================
   // DICE_GAME and DICE_COUNT come from Dart, written immediately above this
   // script so they are set before the IIFE reads them. The practice table is
@@ -190,8 +193,15 @@ const String diceLabJs = r'''
     var e = document.createElement(tag); if (id) e.id = id; if (html !== undefined) e.innerHTML = html; return e;
   }
   function rad(z) { return W * DICE_HALF * ELEM * (GROUND + z * (NEAR - GROUND)); }
+  // A die at rest against a wall is drawn about `rad(0)` across, and turning in
+  // place swings its silhouette out to roughly 1.41x that at 45 degrees. The
+  // playfield edge has to clear the whole die or `overflow:hidden` clips it, so
+  // the margin is the die radius rather than the flat WALL - which shrinks the
+  // field a little and keeps dice off the screen edge.
+  function edge() { return Math.max(WALL, rad(0) * 1.45 + 4); }
   function bounds() {
-    return { L: WALL - W / 2, R: W - WALL - W / 2, T: BAR + WALL - H / 2, B: H - WALL - H / 2 };
+    var e = edge();
+    return { L: e - W / 2, R: W - e - W / 2, T: BAR + e - H / 2, B: H - e - H / 2 };
   }
   function rnd(n) { return 1 + Math.floor(Math.random() * n); }
   function corr(v) { return v - Math.round(v / 360) * 360; }
@@ -265,7 +275,8 @@ const String diceLabJs = r'''
           var kk = Math.min(1, 14 * DT);                 // rolling without slipping
           c.wr += (c.vx * SPIN - c.wr) * kk;
           c.wp += (c.vy * SPIN - c.wp) * kk;
-          c.wy *= Math.pow(0.04, DT);                    // table friction slows the spin
+          var grip = s0 < 180 ? 1 - s0 / 180 : 0;        // a slow die grabs the felt
+          c.wy *= Math.pow(0.04, DT) * Math.pow(0.0002, DT * grip);
         } else {
           c.wy *= Math.pow(0.7, DT);                     // air: spin keeps going
           var ad = Math.pow(0.9, DT);                    // a touch of air tumble drag
@@ -584,6 +595,7 @@ const String diceLabJs = r'''
     whenLoaded(e, function () {
       var f = FACES[rnd(6)];
       d.ready = true;
+      console.log('DICEJS die loaded idx=' + d.idx);
       setOri(d, f[0], f[1], Math.random() * 360);
       statusText();
       maybeReady();
@@ -595,6 +607,7 @@ const String diceLabJs = r'''
     if (!d.ok || d.ready) return;
     d.ok = false;
     d.el.style.display = 'none';
+    console.error('DICEJS die failed to load idx=' + d.idx);
     say('One dice could not load - continuing with the others');
   }
 
@@ -678,14 +691,31 @@ const String diceLabJs = r'''
     first = document.getElementById('dice');
     if (!first) { setTimeout(start, 50); return; }
     W = window.innerWidth; H = window.innerHeight;
+    console.log('DICEJS start ' + W + 'x' + H);
 
     buildUI();
-    window.onerror = function (m, u, l) { say('JS ERROR: ' + m + ' (line ' + l + ')'); };
+    console.log('DICEJS ui built bar=' + !!bar + ' label=' + !!label);
+    window.onerror = function (m, u, l) { say('JS ERROR: ' + m + ' (line ' + l + ')'); console.error('DICEJS error: ' + m + ' @' + l); };
 
     addDie(first);
 
     // create the extra dice only AFTER the first one has fully loaded
     whenLoaded(first, function () { setCount(count); });
+
+    // TEMPORARY diagnostics: report the viewport size, now and once more a
+    // second in, so a device that shows a blank table can tell a platform view
+    // that never gets a size (still 0x0) from one whose size arrives late. The
+    // resize handler is here to stay: the web view is measured the moment the
+    // page parses, which on a device is often before it has been laid out, and
+    // the dice are placed against that measurement.
+    window.addEventListener('resize', function () {
+      W = window.innerWidth; H = window.innerHeight;
+      console.log('DICEJS resize ' + W + 'x' + H);
+      if (first && first.loaded) setCount(count);
+    });
+    setTimeout(function () {
+      console.log('DICEJS size@1s ' + window.innerWidth + 'x' + window.innerHeight);
+    }, 1000);
 
     window.addEventListener('pointerdown', onDown);
   }
@@ -710,13 +740,13 @@ const Duration pageLoadTimeout = Duration(seconds: 5);
 /// `RollPhase.rolling` with the back button disabled.
 const Duration landingTimeout = Duration(seconds: 10);
 
-/// Overrides applied only to the real-money throw, appended to [diceLabCss].
+/// Overrides that let the app's own felt table show through the page.
 ///
 /// Appended rather than prepended on purpose: both are written into one style
-/// block at equal specificity, so the later rule wins. The page normally paints
-/// its own green felt, but on the throw screen the dice sit inside the app's
-/// own column and the felt behind the view has to show through.
-const String _gameCss = r'''
+/// block at equal specificity, so the later rule wins. The page can paint its
+/// own green felt, but the practice and throw screens both sit over the app's
+/// felt backdrop, so the body has to be transparent on either.
+const String _transparentPageCss = r'''
 html, body { background: transparent !important; background-image: none !important; }
 ''';
 
@@ -755,31 +785,47 @@ Widget _diceViewer({
     cameraOrbit: '0deg 6deg auto',
     minCameraOrbit: 'auto 0deg auto',
     maxCameraOrbit: 'auto 180deg auto',
-    debugLogging: false,
-    onWebViewCreated: onWebViewCreated,
+    debugLogging: true,
+    onWebViewCreated: (controller) {
+      onWebViewCreated?.call(controller);
+      _attachPageDiagnostics(controller);
+    },
     javascriptChannels: channels,
     relatedCss: css,
     relatedJs: js,
   );
 }
 
-/// Builds the web view that is the body of the practice table.
+/// TEMPORARY diagnostics: logs every stage of the page load to the Flutter
+/// console so a device that shows a blank table can be diagnosed without adb.
 ///
-/// [onBack] fires when the arrow in the page's app bar is tapped and [onThrow]
-/// on every throw; both are called from the web view, so a caller must expect
-/// them at any time and must not assume they arrive from a user gesture on the
-/// Flutter side.
-Widget buildDiceLabViewer({
-  required VoidCallback onBack,
-  required VoidCallback onThrow,
-}) {
-  return _diceViewer(
-    css: diceLabCss,
-    js: _pageJs(game: false),
-    channels: <JavascriptChannel>{
-      JavascriptChannel('DiceNav', onMessageReceived: (_) => onBack()),
-      JavascriptChannel('DiceAudio', onMessageReceived: (_) => onThrow()),
-    },
+/// `model_viewer_plus` sets its own [NavigationDelegate] before calling
+/// `onWebViewCreated`, so this replaces it. The app never uses AR, which is the
+/// only behaviour that delegate added, so the swap is safe here.
+void _attachPageDiagnostics(WebViewController controller) {
+  unawaited(
+    controller.setNavigationDelegate(
+      NavigationDelegate(
+        onProgress: (progress) => debugPrint('[dice] progress $progress%'),
+        onPageStarted: (url) => debugPrint('[dice] page started: $url'),
+        onPageFinished: (url) => debugPrint('[dice] page finished: $url'),
+        onWebResourceError: (WebResourceError error) => debugPrint(
+          '[dice] web resource error: code=${error.errorCode} '
+          'type=${error.errorType} desc="${error.description}" '
+          'url=${error.url}',
+        ),
+        onNavigationRequest: (request) {
+          debugPrint('[dice] navigation request: ${request.url}');
+          return NavigationDecision.navigate;
+        },
+      ),
+    ),
+  );
+  unawaited(
+    controller.setOnConsoleMessage(
+      (JavaScriptConsoleMessage message) =>
+          debugPrint('[dice console ${message.level}] ${message.message}'),
+    ),
   );
 }
 
@@ -795,7 +841,7 @@ Widget buildGameThrowViewer({
   required VoidCallback onSettled,
 }) {
   return _diceViewer(
-    css: '$diceLabCss$_gameCss',
+    css: '$diceLabCss$_transparentPageCss',
     js: _pageJs(game: true),
     channels: <JavascriptChannel>{
       JavascriptChannel('DiceReady', onMessageReceived: (_) => onReady()),
