@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the bundled binary assets that ship with Janda Burja.
+"""Generates the bundled binary assets that ship with Jhanda Burja.
 
 Everything here is synthesised from scratch with the Python standard library
 plus Pillow, so the build has no network dependency and no licensing questions.
@@ -124,6 +124,20 @@ def _mix(*tracks):
     return [s / peak * 0.85 for s in out]
 
 
+def _punch(samples, drive=2.2):
+    """Drives a short tap into a soft clip so it reads louder and clearer.
+
+    A chip click is only a few dozen milliseconds, so at an equal peak it sinks
+    under the dice and the stingers. Pushing it into a tanh curve lifts its body
+    and adds harmonics - louder and crisper to the ear - then re-normalises so
+    it still peaks just under full scale instead of hard-clipping. Only the taps
+    get this; the dice and the stingers are left exactly as they were.
+    """
+    shaped = [math.tanh(s * drive) for s in samples]
+    peak = max((abs(s) for s in shaped), default=1.0) or 1.0
+    return [s / peak * 0.98 for s in shaped]
+
+
 def _sequence(notes, note_len, decay=5.0):
     """Concatenate tones, each fading in and out so notes do not click."""
     out = []
@@ -141,6 +155,44 @@ def _silence(duration):
     return [0.0] * int(SAMPLE_RATE * duration)
 
 
+def _read_wav(path):
+    """Decode a mono or stereo 16-bit WAV into float samples at SAMPLE_RATE.
+
+    The bundled clip master is a 44.1 kHz stereo file; averaging the two
+    channels, then averaging each pair of frames, gives clean mono at the
+    project rate with no dependency beyond the standard library.
+    """
+    with wave.open(path, "rb") as w:
+        channels = w.getnchannels()
+        rate = w.getframerate()
+        frames = w.readframes(w.getnframes())
+    raw = struct.unpack("<%dh" % (len(frames) // 2), frames)
+    if channels == 2:
+        raw = [(raw[i] + raw[i + 1]) / 2 for i in range(0, len(raw), 2)]
+    samples = [s / 32768.0 for s in raw]
+    if rate == SAMPLE_RATE:
+        return samples
+    # Pair-average to halve the rate (the master is 44.1k, the project 22.05k).
+    return [
+        (samples[i] + samples[i + 1]) / 2 for i in range(0, len(samples) - 1, 2)
+    ]
+
+
+def _roll_3d_from_master(path, duration=1.4, fade=0.25):
+    """The 3D flight sound: the hand-placed master, trimmed and levelled.
+
+    The clip is cut to just outlast the dice's flight, faded out over the last
+    strip so it falls silent as the result stinger lands, then normalised to the
+    same peak the rest of the sounds are written at.
+    """
+    samples = _read_wav(path)
+    out = samples[: int(SAMPLE_RATE * duration)]
+    fade_n = int(SAMPLE_RATE * fade)
+    for i in range(1, fade_n + 1):
+        out[-i] *= i / fade_n
+    return _mix(out)
+
+
 N = {
     "C5": 523.25,
     "D5": 587.33,
@@ -155,10 +207,15 @@ N = {
 
 
 def generate_audio():
-    # Chip landing on felt: tight, woody, very short.
+    # Chip landing on felt: tight, woody, very short. Punched so it carries.
     _write_wav(
         os.path.join(AUDIO_DIR, "chip_place.wav"),
-        _mix(_noise_burst(0.07, decay=9.0, cutoff=0.28), _tone(520, 0.05, decay=14)),
+        _punch(
+            _mix(
+                _noise_burst(0.07, decay=9.0, cutoff=0.28),
+                _tone(520, 0.05, decay=14),
+            )
+        ),
     )
 
     # Dice rattling in a cup before the throw: scattered clicks.
@@ -200,10 +257,28 @@ def generate_audio():
         _sequence([N["G4"], N["E4"]], 0.17, decay=4.0),
     )
 
-    # UI tick for chip selection.
+    # UI tick for chip selection. Punched like the chip so the pair matches.
     _write_wav(
         os.path.join(AUDIO_DIR, "select.wav"),
-        _mix(_tone(880, 0.04, decay=16), _noise_burst(0.03, decay=18, cutoff=0.4)),
+        _punch(
+            _mix(
+                _tone(880, 0.04, decay=16),
+                _noise_burst(0.03, decay=18, cutoff=0.4),
+            )
+        ),
+    )
+
+    # Kept last so a full regeneration reproduces every earlier sound exactly,
+    # then derives this one. The 3D coin-game throw plays a trimmed, levelled
+    # copy of the hand-placed master many_dice_rolling_sound.wav: cut to just
+    # outlast the flight, faded out before the result stinger, and normalised
+    # to the same peak as the rest of the dice. Re-run the generator after
+    # replacing the master to refresh the copy.
+    _write_wav(
+        os.path.join(AUDIO_DIR, "dice_roll_3d.wav"),
+        _roll_3d_from_master(
+            os.path.join(AUDIO_DIR, "many_dice_rolling_sound.wav")
+        ),
     )
 
 

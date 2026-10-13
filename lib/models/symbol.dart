@@ -4,7 +4,7 @@
 /// this order, and [Symbol.values] indexes into per-symbol state maps. Do not
 /// reorder without updating those maps.
 enum Symbol {
-  /// Burja / Jhanda - the crown. The namesake symbol of the game.
+  /// Burja - the crown, one of the six traditional symbols.
   crown('Crown', 'burja'),
 
   /// Jhanda / Jandi - the flag, the second non-card-suit symbol.
@@ -53,7 +53,7 @@ enum Symbol {
   /// number contract with the 3D page is not disturbed by art changes.
   String get imageAsset => switch (this) {
     Symbol.crown => 'assets/images/crown-burja.png',
-    Symbol.flag => 'assets/images/flag-janda.png',
+    Symbol.flag => 'assets/images/flag-jhanda.png',
     Symbol.heart => 'assets/images/love-paan.png',
     Symbol.diamond => 'assets/images/diamond-itta.png',
     Symbol.club => 'assets/images/club-chidi.png',
@@ -63,7 +63,7 @@ enum Symbol {
   /// Yellow background artwork for the betting board.
   String get whiteBgImageAsset => switch (this) {
     Symbol.crown => 'assets/images/burja-white-bg.png',
-    Symbol.flag => 'assets/images/janda-white-bg.png',
+    Symbol.flag => 'assets/images/jhanda-white-bg.png',
     Symbol.heart => 'assets/images/paan-white-bg.png',
     Symbol.diamond => 'assets/images/itta-white-bg.png',
     Symbol.club => 'assets/images/chidi-white-bg.png',

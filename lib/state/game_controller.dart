@@ -1,7 +1,5 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
-
 import '../core/config.dart';
 import '../logic/dice_roller.dart';
 import '../logic/game_engine.dart';
@@ -41,7 +39,7 @@ class GameController extends ChangeNotifier {
   GameController({
     required StorageService storage,
     required RewardedAdService ads,
-    AudioService? audio,
+    AudioService? audio,  
     DiceRoller? roller,
     // Named parameters cannot be named after private fields, so the
     // initializing-formal form is not expressible for these two.
@@ -63,7 +61,6 @@ class GameController extends ChangeNotifier {
     _stats = _storage.loadStats();
     _audio.configure(
       sound: _storage.loadSoundEnabled(AppConfig.soundEnabledByDefault),
-      haptics: _storage.loadHapticsEnabled(AppConfig.hapticsEnabledByDefault),
     );
     _throw3d = _storage.loadThrow3d(AppConfig.throw3dByDefault);
     // An ad load finishes long after the call that started it, so the service
@@ -98,6 +95,13 @@ class GameController extends ChangeNotifier {
   bool _awaitingAdRetry = false;
   String? _adMessage;
   Timer? _adMessageTimer;
+
+  /// Holds the win/lose stinger back a beat after the dice have landed.
+  ///
+  /// The rattle is over a second long; firing the result on top of it buried
+  /// both. A short beat lets the rattle be heard, and cancelling-and-restarting
+  /// keeps a fast player from stacking stingers.
+  Timer? _resultSound;
 
   /// Whether the throw screen uses the 3D dice rather than [DieFaceView].
   ///
@@ -144,15 +148,14 @@ class GameController extends ChangeNotifier {
   Map<Symbol, int> get lastBets => Map<Symbol, int>.unmodifiable(_lastBets);
   BetRejection? get lastRejection => _lastRejection;
   bool get soundEnabled => _audio.soundEnabled;
-  bool get hapticsEnabled => _audio.hapticsEnabled;
 
   /// Whether the next throw uses the 3D dice.
   bool get throw3d => _throw3d;
 
-  /// The sound and haptics engine, for screens that are not part of a round.
+  /// The sound engine, for screens that are not part of a round.
   ///
-  /// Read only on purpose. Handing out the whole service rather than a pair of
-  /// play methods keeps the sound calls explicit at every call site.
+  /// Read only on purpose. Handing out the whole service rather than a play
+  /// method keeps the sound calls explicit at every call site.
   AudioService get audio => _audio;
   RewardedAdState get adState => _ads.state;
   String? get adMessage => _adMessage;
@@ -180,6 +183,7 @@ class GameController extends ChangeNotifier {
   @override
   void dispose() {
     _adMessageTimer?.cancel();
+    _resultSound?.cancel();
     unawaited(_audio.dispose());
     unawaited(_ads.dispose());
     super.dispose();
@@ -222,7 +226,6 @@ class GameController extends ChangeNotifier {
       unawaited(_storage.saveSelectedChip(chip));
     }
     unawaited(_audio.play(GameSound.chipPlace));
-    unawaited(_audio.haptic(HapticLevel.light));
     return true;
   }
 
@@ -233,7 +236,6 @@ class GameController extends ChangeNotifier {
     _updatePhase();
     notifyListeners();
     unawaited(_audio.play(GameSound.select));
-    unawaited(_audio.haptic(HapticLevel.selection));
   }
 
   /// Clears every staged wager, or the last result once settled.
@@ -276,7 +278,6 @@ class GameController extends ChangeNotifier {
     _updatePhase();
     notifyListeners();
     unawaited(_audio.play(GameSound.chipPlace));
-    unawaited(_audio.haptic(HapticLevel.light));
   }
 
   /// Adds half the current stake on [symbol], rounded to a whole chip.
@@ -308,13 +309,22 @@ class GameController extends ChangeNotifier {
   /// are scored. The result is then held until the player acknowledges it.
   ///
   /// When [thrower] is given, it replaces the fixed 950ms wait: it is handed
-  /// the faces just drawn and resolves once the animation carrying them has
-  /// finished. That is how the 3D throw drives a real round - the web view
-  /// tumbles towards faces Dart has already chosen, rather than deciding the
-  /// outcome itself, so every number that touches the wallet still comes from
-  /// [DiceRoller]. Sound and the phase machine stay here; the thrower only
-  /// owns the wait.
-  Future<void> roll({Future<void> Function(List<Symbol> faces)? thrower}) async {
+  /// the faces just drawn and an [onThrowStart] callback, and resolves once the
+  /// animation carrying those faces has finished. That is how the 3D throw
+  /// drives a real round - the web view tumbles towards faces Dart has already
+  /// chosen, rather than deciding the outcome itself, so every number that
+  /// touches the wallet still comes from [DiceRoller]. Sound and the phase
+  /// machine stay here; the thrower only owns when the dice are released and
+  /// when they land.
+  ///
+  /// The release sound is played through [onThrowStart] rather than up front,
+  /// because the 3D page spends a moment loading before it can launch. Playing
+  /// it on the release is what makes the dice sound like they leave the cup as
+  /// the player throws rather than a beat before the page is ready.
+  Future<void> roll({
+    Future<void> Function(List<Symbol> faces, VoidCallback onThrowStart)?
+    thrower,
+  }) async {
     if (!canRoll) return;
 
     final List<Bet> bets = <Bet>[
@@ -329,10 +339,9 @@ class GameController extends ChangeNotifier {
     _lastRejection = null;
     notifyListeners();
 
-    unawaited(_audio.play(GameSound.diceRattle));
-    unawaited(_audio.haptic(HapticLevel.medium));
-
     if (thrower == null) {
+      // The 2D tumble starts now, so the rattle belongs now.
+      _startThrow(GameSound.diceRattle);
       // Slightly longer than the tumble in DieFaceView, so the last thing the
       // player sees moving is the dice coming to rest, not the numbers
       // appearing.
@@ -340,10 +349,8 @@ class GameController extends ChangeNotifier {
     } else {
       // Bounded by the thrower itself, so a web view that never reports a
       // landing cannot leave the board locked behind `RollPhase.rolling`.
-      await thrower(_rollingFaces);
+      await thrower(_rollingFaces, () => _startThrow(GameSound.diceRoll3d));
     }
-
-    unawaited(_audio.play(GameSound.diceRoll));
 
     final RoundResult result = _engine.settle(bets, _rollingFaces);
     _wallet.applyRound(result);
@@ -369,16 +376,31 @@ class GameController extends ChangeNotifier {
     unawaited(_storage.saveLastBets(_lastBets));
     unawaited(_storage.saveStats(_stats));
 
-    if (result.won) {
-      final bool big = result.netChange >= AppConfig.minBet * 5;
-      unawaited(_audio.play(big ? GameSound.winBig : GameSound.win));
-      unawaited(_audio.haptic(big ? HapticLevel.heavy : HapticLevel.medium));
-    } else {
-      unawaited(_audio.play(GameSound.lose));
-      unawaited(_audio.haptic(HapticLevel.light));
-    }
+    // The roll first, then the result: the stinger waits a beat so the rattle
+    // is heard on its own rather than under the top of the verdict.
+    _resultSound?.cancel();
+    _resultSound = Timer(const Duration(milliseconds: 250), () {
+      if (result.won) {
+        final bool big = result.netChange >= AppConfig.minBet * 5;
+        unawaited(_audio.play(big ? GameSound.winBig : GameSound.win));
+      } else {
+        unawaited(_audio.play(GameSound.lose));
+      }
+    });
 
     notifyListeners();
+  }
+
+  /// The release sound that belongs to the instant the dice are thrown.
+  ///
+  /// Handed to the thrower as its `onThrowStart` so the 3D page can choose the
+  /// moment - the release - while the sound itself stays here with the phase
+  /// machine. The 2D path calls it directly, at the start of the tumble. Each
+  /// style plays its own roll: the cup-shake [GameSound.diceRattle] of the 2D
+  /// board, and the smoother [GameSound.diceRoll3d] matched to the flight of
+  /// the physics dice.
+  void _startThrow(GameSound sound) {
+    unawaited(_audio.play(sound));
   }
 
   /// Clears the settled result and returns to a fresh board.
@@ -479,17 +501,10 @@ class GameController extends ChangeNotifier {
 
   // ------------------------------------------------------------------ settings
   Future<void> setSoundEnabled(bool value) async {
-    _audio.configure(sound: value, haptics: _audio.hapticsEnabled);
+    _audio.configure(sound: value);
     notifyListeners();
     await _storage.saveSoundEnabled(value);
     if (value) unawaited(_audio.play(GameSound.select));
-  }
-
-  Future<void> setHapticsEnabled(bool value) async {
-    _audio.configure(sound: _audio.soundEnabled, haptics: value);
-    notifyListeners();
-    await _storage.saveHapticsEnabled(value);
-    if (value) unawaited(_audio.haptic(HapticLevel.selection));
   }
 
   /// Switches the throw between the 2D dice and the 3D physics page.

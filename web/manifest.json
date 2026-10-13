@@ -1,11 +1,11 @@
 {
-    "name": "janda_burja_game_app",
-    "short_name": "janda_burja_game_app",
+    "name": "Jhanda Burja",
+    "short_name": "Jhanda Burja",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Play the classic Nepali dice game with virtual coins.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

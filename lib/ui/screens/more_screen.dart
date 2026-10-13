@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../state/game_controller.dart';
-import 'help_screen.dart';
+import 'about_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'dice_lab_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 
@@ -18,6 +20,28 @@ class MoreScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: <Widget>[
+          _Card(
+            title: 'Practice',
+            children: <Widget>[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.casino_outlined,
+                  color: GameColors.brass,
+                ),
+                title: const Text('3D Dice Table'),
+                subtitle: const Text(
+                  'Throw the dice freely — no coins staked',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DiceLabScreen(controller: controller),
+                  ),
+                ),
+              ),
+            ],
+          ),
           _Card(
             title: 'Information',
             children: <Widget>[
@@ -36,7 +60,7 @@ class MoreScreen extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Settings'),
-                subtitle: const Text('Sound, haptics and preferences'),
+                subtitle: const Text('Sound and preferences'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -48,11 +72,23 @@ class MoreScreen extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('About Us'),
-                subtitle: const Text('Rules, payouts and information'),
+                subtitle: const Text('Who makes Jhanda Burja and how to reach us'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => const HelpScreen(),
+                    builder: (_) => const AboutScreen(),
+                  ),
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Privacy Policy'),
+                subtitle: const Text('How we handle your data'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PrivacyPolicyScreen(),
                   ),
                 ),
               ),
@@ -92,7 +128,15 @@ class _Card extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: GameColors.feltLight),
             ),
-            child: Column(children: children),
+            // A transparent Material sits between the decorated card and the
+            // tiles so their ink splashes paint above the fill instead of being
+            // hidden by it, and clip to the rounded corners.
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.antiAlias,
+              child: Column(children: children),
+            ),
           ),
         ],
       ),

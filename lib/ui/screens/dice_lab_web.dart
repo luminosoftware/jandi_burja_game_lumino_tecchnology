@@ -7,18 +7,23 @@
 /// is the whole reason this screen is not another `CustomPainter` - the frame
 /// budget belongs to the throw, not to the widget tree.
 ///
-/// The page plays one role, the real-money throw ([buildGameThrowViewer]):
-/// always the game's six dice, no chrome, no tap to rethrow, and the faces are
-/// not the page's to choose - Dart sends them in and waits for the page to
-/// report that they have landed. Its seam back into Flutter is two
-/// [JavascriptChannel]s, `DiceReady` and `DiceSettled`.
+/// Two pages share this engine, told apart by the `DICE_GAME` flag injected
+/// before the script runs:
 ///
-/// The engine still carries a practice-only branch behind `DICE_GAME`, left in
-/// place because it is the same simulation the real throw runs. Nothing reaches
-/// it any more.
+/// * [buildGameThrowViewer] is the real-money throw: always the game's six
+///   dice, no chrome, no tap to rethrow, and the faces are not the page's to
+///   choose - Dart sends them in and waits for the page to report that they
+///   have landed. Its seam back into Flutter is two [JavascriptChannel]s,
+///   `DiceReady` and `DiceSettled`.
+/// * [buildDiceLabViewer] is the free practice table: it draws its own app bar,
+///   dice-count picker and roll history, and a tap throws whatever faces the
+///   page rolls for itself. Its channels are `DiceNav` and `DiceAudio`.
+///
+/// Both run the identical physics; only the flag and the dressing differ.
 library;
 
 import 'dart:async';
+import 'dart:convert' show jsonEncode;
 
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
@@ -107,6 +112,8 @@ html, body {
 }
 #cgrid button.sel { background: #43a047; }
 #cgrid button:active { background: #66bb6a; }
+/* painted symbol art embedded by Dart, used in the label and roll history */
+.symimg { vertical-align: middle; border-radius: 3px; }
 ''';
 
 /// The practice table itself: page chrome, physics and animation.
@@ -117,7 +124,8 @@ html, body {
 /// Three things here differ from the standalone app this was written for, and
 /// each is marked in place:
 ///
-/// * `sym()` colours hearts and diamonds red - it used to check the wrong pair.
+/// * `sym()` shows the game's painted symbol art, injected as base64 by Dart,
+///   and falls back to a red-tinted emoji only when it is absent.
 /// * `autoThrow()` posts to `DiceAudio`, so the game can play its dice sounds.
 /// * `buildUI()` puts a back arrow in the app bar that posts to `DiceNav`.
 const String diceLabJs = r'''
@@ -161,14 +169,22 @@ const String diceLabJs = r'''
   var FACES = { 1:[-90,0], 2:[0,0], 3:[0,90], 4:[0,-90], 5:[0,180], 6:[90,0] };
   // =================================================
 
-   // symbol shown for each number (change here if a pair is swapped)
+   // emoji shown for each number only when Dart has not sent the art
    var SYMBOLS = { 1:'♥', 2:'👑', 3:'♠', 4:'♣', 5:'🚩', 6:'♦' };
   // var SYMBOLS = { 1:'♣', 2:'👑', 3:'♥', 4:'♦', 5:'🚩', 6:'♠' };
-  function sym(v) {
+  // The game's painted symbol art, embedded as base64 data URIs by Dart so the
+  // page can draw it without a network fetch. Android and iOS both render the
+  // image; when it is missing the emoji fallback below keeps the table legible.
+  function sym(v, size) {
+    size = size || 24;
+    if (typeof SYMBOL_IMAGES !== 'undefined' && SYMBOL_IMAGES[v]) {
+      return '<img class="symimg" style="height:' + size + 'px;width:' + size +
+        'px" src="' + SYMBOL_IMAGES[v] + '">';
+    }
     // Hearts are 1 and diamonds are 6 in the map above, so those are the two
     // that read red. The old test here marked 3 and 4 - spade and club.
     var red = (v === 1 || v === 6);
-    return '<span style="font-size:24px;' + (red ? 'color:#ff5252' : '') + '">' + SYMBOLS[v] + '</span>';
+    return '<span style="font-size:' + size + 'px;' + (red ? 'color:#ff5252' : '') + '">' + SYMBOLS[v] + '</span>';
   }
 
   // The two bridges back into Flutter. Both are absent in any page served
@@ -211,7 +227,7 @@ const String diceLabJs = r'''
     var d = Math.abs(a - b) % 360;
     return d > 180 ? 360 - d : d;
   }
-  function say(t) { if (label) label.textContent = t; }
+  function say(html) { if (label) label.innerHTML = html; }
 
   // One die against a static wall whose inward normal is (nx, ny). Resolves the
   // normal bounce, Coulomb friction along the wall, and the table spin that
@@ -386,7 +402,7 @@ const String diceLabJs = r'''
       return;
     }
     list.innerHTML = history.map(function (h) {
-      var txt = h.vals.map(sym).join(' &nbsp; ');
+      var txt = h.vals.map(function (v) { return sym(v, 24); }).join(' &nbsp; ');
       return '<div class="row"><span class="n">#' + h.no + '</span><span>' + txt + '</span></div>';
     }).join('');
   }
@@ -433,7 +449,7 @@ const String diceLabJs = r'''
       history.unshift({ no: rollNo, vals: vals.slice(), sum: sum });
       if (history.length > MAX_HISTORY) history.pop();
       if (openId === 'h') renderHistory();
-      say(vals.map(function (v) { return SYMBOLS[v]; }).join('  ') + '  |  tap to throw again');
+      say(vals.map(function (v) { return sym(v, 20); }).join('  ') + '  |  tap to throw again');
       // The real-money throw waits on this and nothing else, so it fires from
       // the settle frame rather than from the release: Dart must not settle
       // the wagers while the dice are still moving.
@@ -501,10 +517,9 @@ const String diceLabJs = r'''
 
   function autoThrow() {
     // The dice are leaving the cup now, which is when the game plays its
-    // rattle. The roll itself lands a beat later, from Flutter's side.
-    // The real-money throw stays silent here: there, Dart plays the rattle the
-    // moment it starts the throw and the landing sound from DiceSettled, so a
-    // second rattle would double up under one release.
+    // rattle. The real-money throw stays silent here: Dart plays the rattle on
+    // this same release - its thrower starts the sound and then calls into the
+    // page - so a second rattle would double up under one throw.
     if (!DICE_GAME) toFlutter('DiceAudio', 'throw');
     launch(null);
   }
@@ -826,6 +841,57 @@ void _attachPageDiagnostics(WebViewController controller) {
       (JavaScriptConsoleMessage message) =>
           debugPrint('[dice console ${message.level}] ${message.message}'),
     ),
+  );
+}
+
+/// The `SYMBOL_IMAGES` preamble injected ahead of the practice page script.
+///
+/// JSON objects can only have string keys, and `jsonEncode` throws
+/// `JsonUnsupportedObjectError` on the whole map when a key is not a `String` -
+/// which is what a `Map<int, String>` of die numbers is. The numbers are
+/// therefore stringified here; the page still indexes with a number, and
+/// JavaScript coerces it to the same string key.
+///
+/// Split out from [buildDiceLabViewer] so a test can pin the encoding down
+/// without a web view. The encode is guarded because it runs during `build`:
+/// art that cannot be serialized must cost the art, never the whole table.
+@visibleForTesting
+String symbolImagesScript(Map<int, String> symbolImages) {
+  if (symbolImages.isEmpty) return '';
+  try {
+    final Map<String, String> jsonSafe = symbolImages.map(
+      (int number, String data) => MapEntry<String, String>('$number', data),
+    );
+    return 'var SYMBOL_IMAGES = ${jsonEncode(jsonSafe)};\n';
+  } catch (_) {
+    // The page falls back to its own emoji symbols.
+    return '';
+  }
+}
+
+/// Builds the web view that is the body of the practice table.
+///
+/// [onBack] fires when the arrow in the page's app bar is tapped and [onThrow]
+/// on every throw; both are called from the web view, so a caller must expect
+/// them at any time and must not assume they arrive from a user gesture on the
+/// Flutter side.
+///
+/// [symbolImages] maps each die number to a base64 `data:` URI of that symbol's
+/// painted art. The page cannot read Flutter assets - it is served over
+/// loopback with no route for them - so the art is inlined into the script.
+/// When empty the page keeps its own emoji symbols.
+Widget buildDiceLabViewer({
+  required VoidCallback onBack,
+  required VoidCallback onThrow,
+  Map<int, String> symbolImages = const <int, String>{},
+}) {
+  return _diceViewer(
+    css: diceLabCss,
+    js: '${symbolImagesScript(symbolImages)}${_pageJs(game: false)}',
+    channels: <JavascriptChannel>{
+      JavascriptChannel('DiceNav', onMessageReceived: (_) => onBack()),
+      JavascriptChannel('DiceAudio', onMessageReceived: (_) => onThrow()),
+    },
   );
 }
 

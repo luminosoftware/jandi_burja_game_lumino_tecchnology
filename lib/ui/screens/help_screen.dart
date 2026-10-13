@@ -4,7 +4,6 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../logic/payout_table.dart';
 import '../../models/symbol.dart';
-import '../widgets/symbol_icon.dart';
 import '../widgets/value_disclosure.dart';
 
 /// Rules, the payout table, and the age / no-real-money acknowledgements.
@@ -251,17 +250,28 @@ class _Section extends StatelessWidget {
 }
 
 /// Symbol key, so the local names are documented somewhere.
+///
+/// Each row leads with the same painted artwork the betting board uses, so the
+/// symbol a player learns here is the one they will tap when they go to bet.
 class SymbolLegend extends StatelessWidget {
   const SymbolLegend({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      spacing: 10,
       children: <Widget>[
         for (final Symbol s in Symbol.values)
           Row(
             children: <Widget>[
-              SymbolIcon(s, size: 26, color: GameColors.cream),
+              ClipRRect(                
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset(
+                  s.whiteBgImageAsset,
+                  width: 26,
+                  height: 26,
+                ),
+              ),
               const SizedBox(width: 12),
               Text(s.label, style: const TextStyle(color: GameColors.cream)),
               const Spacer(),
@@ -269,8 +279,10 @@ class SymbolLegend extends StatelessWidget {
                 s.localName,
                 style: const TextStyle(color: Color(0xFF9FB6AA)),
               ),
+              
             ],
           ),
+          
       ],
     );
   }

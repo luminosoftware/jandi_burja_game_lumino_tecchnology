@@ -6,10 +6,15 @@ import '../../services/rewarded_ad_service.dart';
 import '../../state/game_controller.dart';
 import '../widgets/betting_board.dart';
 import '../widgets/coin_picker.dart';
+import '../widgets/banner_ad_widget.dart';
 import '../widgets/felt_backdrop.dart'; 
 import '../widgets/hero_card.dart';
 import 'roll_screen.dart';
 import 'more_screen.dart';
+
+/// The one vertical gap reused between every section of the betting table, so
+/// the column is evenly spaced instead of hand-tuned.
+const double _sectionGap = 14;
 
 /// The betting table: quick actions, balance, the six symbols, and the throw.
 /// Deliberately contains no dice. The throw happens on its own screen, so this
@@ -65,7 +70,7 @@ class GameScreen extends StatelessWidget {
     // quick actions the instant a single bet was staged.
     final bool locked =
         c.phase == RollPhase.rolling || c.phase == RollPhase.settled;
-
+  
     return Scaffold(
       body: Stack(
         children: <Widget>[
@@ -76,41 +81,44 @@ class GameScreen extends StatelessWidget {
                 _TopBar(controller: c),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 2, 14, 4),
+                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 4),
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 760),
+                        // One gap reused between every section so the column
+                        // reads as evenly spaced rather than hand-tuned.
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
                             HeroCard(controller: c),
-                            const SizedBox(height: 8),
-                            BetAmount(controller: c),
                             if (c.lastRejection != null) ...<Widget>[
-                              const SizedBox(height: 6),
+                              const SizedBox(height: _sectionGap),
                               _RejectionNotice(rejection: c.lastRejection!),
                             ],
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 40),
+                            // The running total sits between the balance and the
+                            // board: it is the bridge between what you have and
+                            // where you are putting it.
+                            BetAmount(controller: c), 
+                            const SizedBox(height: 20),
                             BettingBoard(
                               controller: c,
                               bets: c.wallet.bets,
                               enabled: !locked,
                             ),
-                            // The widest gap on the screen sits between the
-                            // symbols and the coins: the board is where the bet
-                            // is named, the coins are how it is paid for, and
-                            // the space is what says those are two steps.
-                            const SizedBox(height: 18),
+                            const SizedBox(height: _sectionGap),
+                            _QuickActions(controller: c),
+                            const SizedBox(height: _sectionGap),
+                            // The coins sit under the corrections, directly
+                            // above the throw, so the two ways to spend finish
+                            // the column together.
                             CoinPicker(
                               selected: c.wallet.selectedChip,
                               enabled: !locked,
                               onSelect: c.selectChip,
                             ),
-                            const SizedBox(height: 10),
-                            // Under the coins rather than above the board, so
-                            // the order on screen runs the way the round does:
-                            // pick a coin, place it, fix a mistake.
-                            _QuickActions(controller: c),
+                            const SizedBox(height: _sectionGap),
+                            Center(child: HomeBannerAdWidget()),
                           ],
                         ),
                       ),
@@ -120,7 +128,7 @@ class GameScreen extends StatelessWidget {
                 // Pinned outside the scroll view: the one control that matters
                 // most must stay reachable on a small phone without scrolling.
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 760),
@@ -154,50 +162,80 @@ class GameScreen extends StatelessWidget {
 ///
 /// It only picks which dice the single ROLL THE DICE button uses: it stages
 /// nothing, spends nothing and is therefore never gated on a round being ready.
-/// A switch with a label on either side reads as a choice between two named
-/// states rather than as an action, and both labels are tappable so the mode can
-/// be picked from whichever side the eye lands on.
-class _ThrowModeToggle extends StatelessWidget {
-  const _ThrowModeToggle({required this.controller});
+/// The two labels live inside the track with a brass thumb that slides to the
+/// active one, so the control reads as one switch rather than a label pair that
+/// happens to flank a switch. Either half is tappable.
+class _DiceStyleSwitch extends StatelessWidget {
+  const _DiceStyleSwitch({required this.controller});
 
   final GameController controller;
+
+  static const Key switchKey = Key('diceStyleSwitch');
 
   @override
   Widget build(BuildContext context) {
     final bool is3d = controller.throw3d;
     return Tooltip(
       message: 'Dice style: 2D or 3D',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _ModeLabel(
-            text: '2D',
-            active: !is3d,
-            onTap: () => controller.setThrow3d(false),
+      child: Semantics(
+        container: true,
+        label: 'Dice style',
+        value: is3d ? '3D' : '2D',
+        toggled: is3d,
+        child: Container(
+          key: switchKey,
+          width: 72,
+          height: 30,
+          decoration: BoxDecoration(
+            color: GameColors.feltMid,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: const Color(0x33FFFFFF)),
           ),
-          Switch(
-            value: is3d,
-            onChanged: controller.setThrow3d,
-            activeThumbColor: GameColors.ink,
-            activeTrackColor: GameColors.brass,
-            inactiveThumbColor: GameColors.cream,
-            inactiveTrackColor: GameColors.feltMid,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          child: Stack(
+            children: <Widget>[
+              AnimatedAlign(
+                alignment: is3d ? Alignment.centerRight : Alignment.centerLeft,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: Container(
+                  width: 35,
+                  height: 26,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: GameColors.brass,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+              ),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _SwitchLabel(
+                      text: '2D',
+                      active: !is3d,
+                      onTap: () => controller.setThrow3d(false),
+                    ),
+                  ),
+                  Expanded(
+                    child: _SwitchLabel(
+                      text: '3D',
+                      active: is3d,
+                      onTap: () => controller.setThrow3d(true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          _ModeLabel(
-            text: '3D',
-            active: is3d,
-            onTap: () => controller.setThrow3d(true),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// One side of [_ThrowModeToggle]: a short label that also selects its mode.
-class _ModeLabel extends StatelessWidget {
-  const _ModeLabel({
+/// One half of [_DiceStyleSwitch], sitting over the sliding thumb.
+class _SwitchLabel extends StatelessWidget {
+  const _SwitchLabel({
     required this.text,
     required this.active,
     required this.onTap,
@@ -212,12 +250,11 @@ class _ModeLabel extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Center(
         child: Text(
           text,
           style: TextStyle(
-            color: active ? GameColors.brass : const Color(0xFF9FB6AA),
+            color: active ? GameColors.ink : GameColors.cream.withValues(alpha: 0.7),
             fontSize: 12,
             fontWeight: active ? FontWeight.w900 : FontWeight.w700,
             letterSpacing: 0.5,
@@ -239,10 +276,10 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
       child: Row(
         children: <Widget>[
-          IconButton(
+          IconButton( 
             tooltip: 'Menu',
             icon: Image.asset(
-              'assets/images/appbar.png',
+              'assets/images/appbar_image_512512.png',
               width: 34,
               height: 34,
             ),
@@ -251,7 +288,7 @@ class _TopBar extends StatelessWidget {
                 builder: (_) => MoreScreen(controller: controller),
               ),
             ),
-          ),
+          ),  
           const Expanded(
             child: Text(
               AppConfig.appName,
@@ -266,7 +303,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
           ),
-          _ThrowModeToggle(controller: controller),
+          _DiceStyleSwitch(controller: controller),
         ],
       ),
     );
@@ -303,11 +340,11 @@ class _RejectionNotice extends StatelessWidget {
   }
 }
 
-/// Undo, repeat and clear, sitting above the board.
+/// Undo, repeat and clear, under the board.
 ///
-/// The ad refill used to be a fourth button here, squeezed in only when the
-/// player was already broke. It now lives in the hero card, where there is room
-/// to explain it.
+/// Flat text buttons rather than outlined ones: these are corrections to a bet,
+/// not destinations, and a row of three boxes competed with the board above
+/// them. The icons stay so the row is still scannable at a glance.
 class _QuickActions extends StatelessWidget {
   const _QuickActions({required this.controller});
 
@@ -322,28 +359,31 @@ class _QuickActions extends StatelessWidget {
     return Row(
       children: <Widget>[
         Expanded(
-          child: OutlinedButton.icon(
+          child: TextButton.icon(
             onPressed: busy || !controller.wallet.hasBets
                 ? null
                 : controller.undoLastBet,
+            style: _quietActionStyle,
             icon: const Icon(Icons.undo, size: 18),
             label: const Text('Undo'),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: OutlinedButton.icon(
+          child: TextButton.icon(
             onPressed: busy || !controller.canRepeatLast
                 ? null
                 : controller.repeatLastBet,
+            style: _quietActionStyle,
             icon: const Icon(Icons.replay, size: 18),
             label: const Text('Repeat'),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: OutlinedButton.icon(
+          child: TextButton.icon(
             onPressed: busy ? null : controller.clearBoard,
+            style: _quietActionStyle,
             icon: const Icon(Icons.backspace_outlined, size: 18),
             label: const Text('Clear'),
           ),
@@ -351,6 +391,12 @@ class _QuickActions extends StatelessWidget {
       ],
     );
   }
+
+  static final ButtonStyle _quietActionStyle = TextButton.styleFrom(
+    foregroundColor: GameColors.brass,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  );
 }
 
 /// Transient message bar, with a retry that only appears when there is

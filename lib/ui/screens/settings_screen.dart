@@ -7,7 +7,7 @@ import '../../state/game_controller.dart';
 import '../widgets/value_disclosure.dart';
 import 'help_screen.dart';
 
-/// Sound, haptics, ad status, and the legal disclosure in one place.
+/// Sound, ad status, and the legal disclosure in one place.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.controller});
 
@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: <Widget>[
               _Card(
-                title: 'Sound and feel',
+                title: 'Sound',
                 children: <Widget>[
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -36,22 +36,18 @@ class SettingsScreen extends StatelessWidget {
                     title: const Text('Sound effects'),
                     subtitle: const Text('Chips, dice and wins'),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: controller.hapticsEnabled,
-                    onChanged: controller.setHapticsEnabled,
-                    title: const Text('Vibration'),
-                    subtitle: const Text('A pulse on each chip and throw'),
-                  ),
                 ],
               ),
               _AdCard(controller: controller),
-              const ValueDisclosure(),
               _Card(
-                title: 'About',
+                title: 'Help',
                 children: <Widget>[
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.menu_book_outlined,
+                      color: GameColors.brass,
+                    ),
                     title: const Text('How to play'),
                     subtitle: const Text('Rules, payouts and odds'),
                     trailing: const Icon(Icons.chevron_right),
@@ -61,21 +57,9 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (AppConfig.usingTestAdIds)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'This build serves Google\'s test ads and earns '
-                        'nothing. Replace the ad unit id before publishing.',
-                        style: TextStyle(
-                          color: GameColors.lose,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
                 ],
               ),
+              const ValueDisclosure(),
             ],
           ),
         );
@@ -140,6 +124,19 @@ class _AdCard extends StatelessWidget {
             label: const Text('Try again'),
           ),
         ),
+        if (AppConfig.usingTestAdIds)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'This build serves Google\'s test ads and earns nothing. '
+              'Replace the ad unit id before publishing.',
+              style: TextStyle(
+                color: GameColors.lose,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
       ],
     );
   }

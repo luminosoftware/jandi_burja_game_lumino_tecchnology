@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:janda_burja_game_app/models/symbol.dart';
-import 'package:janda_burja_game_app/ui/screens/dice_lab_web.dart';
+import 'package:jhanda_burja_game_app/models/symbol.dart';
+import 'package:jhanda_burja_game_app/ui/screens/dice_lab_web.dart';
 
 /// A [DiceThrowBridge] that keeps every promise the real one makes, without
 /// opening a loopback server or asking a platform for a web view.

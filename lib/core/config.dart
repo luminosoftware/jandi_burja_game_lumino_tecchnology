@@ -7,7 +7,17 @@
 class AppConfig {
   const AppConfig._();
 
-  static const String appName = 'Janda Burja';
+  static const String appName = 'Jhanda Burja';
+
+  // ---------------------------------------------------------------- company
+  /// The studio behind the game, named on the About screen.
+  static const String companyName = 'Lumino Technology Pvt. Ltd.';
+
+  /// Where the company is based, as shown on the About screen.
+  static const String companyAddress = 'Pokhara, Srijana Chowk, Nepal';
+
+  /// The address the About screen's "contact us" row opens.
+  static const String supportEmail = 'luminotechnologyapp@gmail.com';
 
   // ---------------------------------------------------------------- economy
   /// Coins a brand new player starts with.
@@ -54,24 +64,20 @@ class AppConfig {
   // -------------------------------------------------------------------- ads
   /// AdMob rewarded-video ad unit.
   ///
-  /// THIS IS GOOGLE'S OFFICIAL TEST UNIT ID. It serves a dummy ad and earns
-  /// no revenue. It is deliberate: AdMob suspends accounts whose apps serve
-  /// test ads in production.
-  ///
-  /// TODO(RELEASE): replace with your own rewarded ad unit id before
-  /// publishing, then flip [usingTestAdIds] to false. While the flag is true the
-  /// settings screen shows a red reminder, which is the only guard: a hard
-  /// launch failure was considered and rejected, because a crash loop in front
-  /// of real players is a worse outcome than serving an ad that pays nothing.
+  /// Rewarded unit registered in the publisher's AdMob account. During testing,
+  /// use Google's demo unit or a registered test device instead.
   static const String admobRewardedUnitId =
-      'ca-app-pub-3940256099942544/5224354917';
+      'ca-app-pub-2829352214511086/6206737074';
 
-  /// True while the dummy test ad unit is in use.
-  static const bool usingTestAdIds = true;
+  /// True only when Google's official demo ad units are configured.
+  static const bool usingTestAdIds = false;
+
+  /// Banner unit registered in the publisher's AdMob account.
+  static const String admobBannerHomeUnitId =
+      'ca-app-pub-2829352214511086/5999776955';
 
   // ------------------------------------------------------------------ audio
   static const bool soundEnabledByDefault = true;
-  static const bool hapticsEnabledByDefault = true;
 
   // ------------------------------------------------------------------- throw
   /// Whether the throw screen starts in its 3D dice mode.

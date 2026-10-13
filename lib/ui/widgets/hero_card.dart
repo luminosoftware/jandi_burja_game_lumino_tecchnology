@@ -30,9 +30,16 @@ class HeroCard extends StatelessWidget {
         color: GameColors.feltMid,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: broke ? GameColors.brassDark : const Color(0x22FFFFFF),
+          color: broke ? GameColors.brassDark : const Color(0x44D4A94E),
           width: broke ? 2 : 1,
         ),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: <Widget>[
@@ -93,13 +100,12 @@ class RollButton extends StatelessWidget {
   }
 }
 
-/// The status line under the hero card: what is staked, or why nothing is.
+/// The running total, pinned directly above ROLL THE DICE.
 ///
-/// No card and no background: it is one line of status, not a second place to
-/// look for something. It is also where the out-of-coins explanation lives.
-/// That message used to be a banner inside the hero card, which meant a third
-/// block competing with the balance, and on a 320 pixel phone it pushed the
-/// quick actions off the bottom. One line, reused, beats a banner.
+/// One line rather than a tall stacked block: the amount sits beside the label
+/// it belongs to, so the number and the button it enables are read as one
+/// thought. It is also the only place the out-of-coins explanation lives, so a
+/// broke player's line is replaced rather than doubled up.
 class BetAmount extends StatelessWidget {
   const BetAmount({super.key, required this.controller});
 
@@ -113,45 +119,52 @@ class BetAmount extends StatelessWidget {
 
     final int bet = controller.wallet.totalBet;
 
-    // Centred, with the amount on its own line under the label, so the number
-    // the player came to read is the middle of the screen rather than something
-    // they have to find at the end of a row. Nothing is shown below the label
-    // until there is something to show: an empty line reading zero is a worse
-    // answer than no line at all.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Text(
-          'You are betting',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF9FB6AA),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-          ),
-        ),
-        if (bet > 0) ...<Widget>[
-          const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const SymbolIcon.chip(size: 18, color: GameColors.brass),
-              const SizedBox(width: 5),
-              Text(
-                _grouped(bet),
-                style: const TextStyle(
-                  color: GameColors.brass,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+    // Centred as a group so the label and the amount read as one line, and the
+    // amount appears only once there is something to show: a bare zero is a
+    // worse answer than no number at all.
+    //
+    // Framed as a small "bet slip" strip so the running total reads as part of
+    // the table rather than a line of loose text.
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: GameColors.feltDark.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x33D4A94E)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          const Flexible(
+            child: Text(
+              'You are betting',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: GameColors.cream,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.5,
               ),
-            ],
+            ),
           ),
+          if (bet > 0) ...<Widget>[
+            const SizedBox(width: 8),
+            const SymbolIcon.chip(size: 20, color: GameColors.brass),
+            const SizedBox(width: 5),
+            Text(
+              _grouped(bet),
+              style: const TextStyle(
+                color: GameColors.brass,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -170,6 +183,7 @@ class _OutOfCoins extends StatelessWidget {
     // mid-session does not see the line jump to one side.
     return Row(
       mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
         const Icon(Icons.info_outline, color: GameColors.brass, size: 15),
         const SizedBox(width: 6),

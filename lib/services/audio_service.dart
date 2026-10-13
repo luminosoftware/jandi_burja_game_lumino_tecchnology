@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 /// Every sound the game can make.
 enum GameSound {
   chipPlace('audio/chip_place.wav'),
   select('audio/select.wav'),
   diceRattle('audio/dice_rattle.wav'),
-  diceRoll('audio/dice_roll.wav'),
+  diceRoll3d('audio/dice_roll_3d.wav'),
   win('audio/win.wav'),
   winBig('audio/win_big.wav'),
   lose('audio/lose.wav');
@@ -20,14 +19,38 @@ enum GameSound {
 
   /// Sounds short and often repeated, which is what a chip being placed is.
   ///
-  /// These are the ones a player hears under their own fingers, so they are
-  /// held ready in memory and played through a low-latency voice rather than
-  /// prepared at the moment of the tap. The dice and the win stingers are
-  /// longer, play once, and have nothing to gain from it.
+  /// Taps and the dice are held in a low-latency voice, which is a sample in
+  /// memory: fast enough to land under the player's finger and to overlap the
+  /// dice rolling over the rattle. The win stingers are heard once, after the
+  /// dice have stopped, so they play through a plain preloaded player.
   bool get isTap => this == GameSound.chipPlace || this == GameSound.select;
+
+  /// Taps and the dice are replayed mid-flight as the player keeps tapping and
+  /// the dice keep rolling, so each gets a second voice. A stinger lands once.
+  int get voiceCount => isTap || _isDice ? 2 : 1;
+
+  bool get _isDice =>
+      this == GameSound.diceRattle || this == GameSound.diceRoll3d;
+
+  /// A tap voice is a pooled sample; everything else is a prepared media player.
+  PlayerMode get playerMode =>
+      isTap ? PlayerMode.lowLatency : PlayerMode.mediaPlayer;
+
+  /// A tap voice is released after it sounds; a longer sound is kept loaded so
+  /// the next roll can replay it without reading the file again.
+  ReleaseMode get releaseMode =>
+      isTap ? ReleaseMode.release : ReleaseMode.stop;
+
+  /// How loud the sound plays relative to the others.
+  ///
+  /// The chip and select clicks are what the player hears under their own
+  /// finger, so they play at full level; the dice and the stingers are held a
+  /// little back, partly for headroom and partly so the click still cuts
+  /// through when a bet lands mid-celebration.
+  double get volume => isTap ? 1.0 : 0.8;
 }
 
-/// Plays the bundled offline sound effects and fires haptic pulses.
+/// Plays the bundled offline sound effects.
 ///
 /// Playback is fire-and-forget: a failure to play a sound must never interrupt
 /// gameplay, so every call is wrapped and swallowed. The game is designed to be
@@ -45,7 +68,7 @@ class AudioService {
   AudioPlayer? _player;
   bool _configured = false;
 
-  /// Ready-to-play voices for the tap sounds, and the round-robin cursor into
+  /// Ready-to-play voices for every sound, and the round-robin cursor into
   /// them. Empty until [warm] has run, and deliberately left empty when sound
   /// is off, so a muted game never touches the platform.
   final Map<GameSound, List<_Voice>> _voices = <GameSound, List<_Voice>>{};
@@ -55,17 +78,12 @@ class AudioService {
   AudioPlayer? get _instance => _player ??= _injected ?? AudioPlayer();
 
   bool _soundEnabled = true;
-  bool _hapticsEnabled = true;
 
-  /// Set false by the player in settings. When false, [play] is a no-op but
-  /// haptics still work, because they are a separate preference.
+  /// Set false by the player in settings. When false, [play] is a no-op.
   bool get soundEnabled => _soundEnabled;
 
-  bool get hapticsEnabled => _hapticsEnabled;
-
-  void configure({required bool sound, required bool haptics}) {
+  void configure({required bool sound}) {
     _soundEnabled = sound;
-    _hapticsEnabled = haptics;
   }
 
   /// Low-latency pooled player, released when the game closes.
@@ -79,13 +97,15 @@ class AudioService {
     ),
   );
 
-  /// Preloads the tap sounds so the first tap is as fast as the hundredth.
+  /// Preloads every sound so the first play is as fast as the hundredth.
   ///
   /// This is the whole point of the class: [play] used to hand the player a
   /// promise that took three platform round trips to configure the player and
   /// then read the sound off disk, which is exactly the gap a chip click should
-  /// never have. Warm once, at startup, and the tap path is a single call into
-  /// an already-loaded sample.
+  /// never have, and which made the dice land a beat after they were thrown.
+  /// The dice and the stingers used to go through that slow path; now all of
+  /// them are prepared at startup. Each sound keeps its own player, so the
+  /// rattle, the landing and the win no longer interrupt one another.
   ///
   /// Callers fire this and forget: it is not awaited by the game, and every
   /// failure inside it is swallowed, so a device without a working audio
@@ -94,23 +114,23 @@ class AudioService {
     if (_warmed || !_soundEnabled) return;
     _warmed = true;
     for (final GameSound sound in GameSound.values) {
-      if (!sound.isTap) continue;
       unawaited(_loadVoices(sound));
     }
   }
 
   Future<void> _loadVoices(GameSound sound) async {
-    // Two, so a second tap landing while the first click is still sounding gets
-    // its own voice instead of cutting the first one short.
-    const int voicesPerSound = 2;
+    final int voicesPerSound = sound.voiceCount;
     final List<_Voice> loaded = <_Voice>[];
     for (int i = 0; i < voicesPerSound; i++) {
       try {
         final AudioPlayer player = AudioPlayer();
-        await player.setPlayerMode(PlayerMode.lowLatency);
+        await player.setPlayerMode(sound.playerMode);
         await player.setAudioContext(_audioContext);
         await player.setSource(AssetSource(sound.assetPath));
-        await player.setReleaseMode(ReleaseMode.release);
+        await player.setReleaseMode(sound.releaseMode);
+        // Keep the effects at a sensible level relative to each other, and
+        // never duck whatever music the player has going.
+        await player.setVolume(sound.volume);
         loaded.add(_Voice(player));
       } catch (error) {
         debugPrint('AudioService: could not preload ${sound.name}: $error');
@@ -164,9 +184,9 @@ class AudioService {
 
   /// Plays the next voice in rotation, seeking it back to the start first.
   ///
-  /// A voice in [PlayerMode.lowLatency] is a preloaded sample held in memory, so
-  /// this is a rewind and a play, not a load. Seeking is the one thing low
-  /// latency mode does not do, hence the fallback for the mock plugin.
+  /// A prepared voice already holds its sample in memory, so this is a rewind
+  /// and a play, not a load. Seeking is the one thing a low-latency sample does
+  /// not do, hence the fallback for the mock plugin.
   Future<void> _playReady(List<_Voice> voices, int cursor) async {
     final _Voice voice = voices[cursor % voices.length];
     try {
@@ -178,25 +198,6 @@ class AudioService {
       await voice.player.resume();
     } catch (error) {
       debugPrint('AudioService: failed to play a prepared voice: $error');
-    }
-  }
-
-  /// [light] for a chip placement, [medium] for a roll, [heavy] for a big win.
-  Future<void> haptic(HapticLevel level) async {
-    if (!_hapticsEnabled) return;
-    try {
-      switch (level) {
-        case HapticLevel.selection:
-          await HapticFeedback.selectionClick();
-        case HapticLevel.light:
-          await HapticFeedback.lightImpact();
-        case HapticLevel.medium:
-          await HapticFeedback.mediumImpact();
-        case HapticLevel.heavy:
-          await HapticFeedback.heavyImpact();
-      }
-    } catch (error) {
-      debugPrint('AudioService: haptic failed: $error');
     }
   }
 
@@ -220,7 +221,7 @@ class AudioService {
   }
 }
 
-/// One preloaded tap sound.
+/// One preloaded sound.
 ///
 /// A wrapper rather than a bare [AudioPlayer] so the reason a sound is held in
 /// a list of these, instead of played unprepared, is visible where it is built.
@@ -229,5 +230,3 @@ class _Voice {
 
   final AudioPlayer player;
 }
-
-enum HapticLevel { selection, light, medium, heavy }

@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../core/config.dart';
 import '../../core/theme.dart';
-import 'symbol_icon.dart';
 
-/// The coin denominations, as a grid.
+/// The coin denominations, as a single segmented rail.
 ///
-/// A horizontal scroller was the wrong shape for five values: the player had to
-/// discover that there were more off-screen, and the one they wanted was as often
-/// as not the one they could not see. Every denomination now fits on screen at
-/// once, with the selected chip filled brass so the current choice reads without
-/// having to be told.
+/// One control split into equal value segments rather than a row of separate
+/// chips: a brass thumb slides to the selected denomination, so the choice reads
+/// the same way as the 2D/3D switch in the top bar. Every denomination is on
+/// screen at once, so there is nothing to scroll to and nothing to discover.
 class CoinPicker extends StatelessWidget {
   const CoinPicker({
     super.key,
@@ -25,39 +23,92 @@ class CoinPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        // Five across at any width. The widest value is four digits, which
-        // still fits the narrowest phone this app supports, so there is no
-        // breakpoint to reason about and nothing to scroll.
-        const double gap = 8;
-        final int count = AppConfig.chipDenominations.length;
-        final double cellWidth =
-            (constraints.maxWidth - gap * (count - 1)) / count;
-
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: <Widget>[
-            for (final int value in AppConfig.chipDenominations)
-              SizedBox(
-                width: cellWidth,
-                child: _Coin(
-                  value: value,
-                  active: value == selected,
-                  enabled: enabled,
-                  onTap: () => onSelect(value),
-                ),
-              ),
+    final List<int> values = AppConfig.chipDenominations;
+    return AnimatedOpacity(
+      opacity: enabled ? 1 : 0.5,
+      duration: const Duration(milliseconds: 150),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: GameColors.feltDark,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0x33FFFFFF)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
           ],
-        );
-      },
+        ),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double segment = constraints.maxWidth / values.length;
+            final int activeIndex = values.indexOf(selected);
+            // One stop per segment: -1 at the far left, +1 at the far right.
+            final double alignX = values.length == 1
+                ? 0
+                : (activeIndex / (values.length - 1)) * 2 - 1;
+
+            return Stack(
+              children: <Widget>[
+                // Faint rules between segments, drawn under the thumb so the
+                // selected one never shows a line through it.
+                for (int i = 1; i < values.length; i++)
+                  Positioned(
+                    left: segment * i,
+                    top: 8,
+                    bottom: 8,
+                    width: 1,
+                    child: const ColoredBox(color: Color(0x22FFFFFF)),
+                  ),
+                if (activeIndex >= 0)
+                  AnimatedAlign(
+                    alignment: Alignment(alignX, 0),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    child: FractionallySizedBox(
+                      widthFactor: 1 / values.length,
+                      heightFactor: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: GameColors.brass,
+                          borderRadius: BorderRadius.circular(11),
+                          border: Border.all(
+                            color: GameColors.brassDark,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Row(
+                  children: <Widget>[
+                    for (final int value in values)
+                      Expanded(
+                        child: _Segment(
+                          value: value,
+                          active: value == selected,
+                          enabled: enabled,
+                          onTap: () => onSelect(value),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
-class _Coin extends StatelessWidget {
-  const _Coin({
+/// One value in the rail. The whole cell is the tap target, so the number does
+/// not have to be hit precisely on a phone.
+class _Segment extends StatelessWidget {
+  const _Segment({
     required this.value,
     required this.active,
     required this.enabled,
@@ -71,43 +122,30 @@ class _Coin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color foreground = active ? GameColors.ink : GameColors.cream;
-
     return Semantics(
       button: true,
       selected: active,
       label: '$value coin',
-      child: Material(
-        color: active ? GameColors.brass : GameColors.feltMid,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: enabled ? onTap : null,
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: active ? GameColors.brass : const Color(0x33FFFFFF),
-                width: active ? 2 : 1,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                SymbolIcon.chip(size: 16, color: foreground),
-                const SizedBox(height: 1),
-                Text(
-                  '$value',
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: foreground,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    height: 1.1,
-                  ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: FittedBox(
+              // A four-digit value in a fifth of a 320 pixel rail would
+              // otherwise overflow; scaling down is invisible at this size.
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$value',
+                maxLines: 1,
+                style: TextStyle(
+                  color: active ? GameColors.ink : GameColors.cream,
+                  fontSize: 13,
+                  fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+                  letterSpacing: 0.3,
                 ),
-              ],
+              ),
             ),
           ),
         ),

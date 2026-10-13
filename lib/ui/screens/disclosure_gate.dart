@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
 import '../../state/game_controller.dart';
@@ -21,6 +22,8 @@ class DisclosureGate extends StatefulWidget {
 }
 
 class _DisclosureGateState extends State<DisclosureGate> {
+  DateTime? _lastBackPress;
+
   @override
   void initState() {
     super.initState();
@@ -41,10 +44,25 @@ class _DisclosureGateState extends State<DisclosureGate> {
     await widget.controller.acknowledgeAge();
   }
 
+  void _handleBack() {
+    final DateTime now = DateTime.now();
+    final DateTime? previous = _lastBackPress;
+    if (previous != null && now.difference(previous) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+
+    _lastBackPress = now;
+    // Keep the first press silent; the second press within two seconds exits.
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (!didPop) _handleBack();
+      },
       child: GameScreen(controller: widget.controller),
     );
   }
@@ -69,7 +87,7 @@ class _DisclosureDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(
-                'Janda Burja is a game of chance. It is played with coins that '
+                'Jhanda Burja is a game of chance. It is played with coins that '
                 'have no monetary value and cannot be bought or cashed out.',
                 style: TextStyle(color: GameColors.cream, height: 1.4),
               ),

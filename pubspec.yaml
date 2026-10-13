@@ -1,5 +1,5 @@
-name: janda_burja_game_app
-description: "A new Flutter project."
+name: jhanda_burja_game_app
+description: "Jhanda Burja, a virtual-coin Nepali dice game."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -54,6 +54,10 @@ dependencies:
   # Already in the lock file as a transitive dependency of the above.
   webview_flutter: ^4.14.1
 
+  # Opens the mail app from the About screen. Also already in the lock file as a
+  # transitive dependency of model_viewer_plus.
+  url_launcher: ^6.3.3
+
   path_provider: ^2.1.0
 
 dev_dependencies:
@@ -66,6 +70,15 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Generates the Android/iOS launcher icons from
+  # assets/images/app_launcher_icon.png. Run with `dart run
+  # flutter_launcher_icons` after changing the icon.
+  flutter_launcher_icons: ^0.14.4
+
+  # Generates the native launch splash (Android and iOS) from the same logo.
+  # Run with `dart run flutter_native_splash:create`.
+  flutter_native_splash: ^2.4.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -118,3 +131,28 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Launcher icon generation (assets/images/app_launcher_icon.png). Run
+# `dart run flutter_launcher_icons` to (re)generate the Android mipmaps and the
+# iOS AppIcon set. The finalised icon is used as-is for the adaptive foreground,
+# with a matching green background so the Android mask crops only its field.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_launcher_icon.png"
+  adaptive_icon_background: "#0A3E19"
+  adaptive_icon_foreground: "assets/images/app_launcher_icon.png"
+  remove_alpha_ios: true
+
+# Native launch splash (Android and iOS), brand green behind the transparent
+# splash art. Run `dart run flutter_native_splash:create` to regenerate.
+flutter_native_splash:
+  color: "#0A3E19"
+  image: assets/images/native_splash_screen_11521152.png
+  android: true
+  ios: true
+  web: false
+  android_12:
+    color: "#0A3E19"
+    image: assets/images/native_splash_screen_11521152.png
+

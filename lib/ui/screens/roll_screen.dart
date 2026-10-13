@@ -88,10 +88,12 @@ class _RollScreenState extends State<RollScreen> {
 
   /// Runs one 3D throw on the faces [GameController.roll] has already dealt.
   ///
-  /// Handed to the controller as its `thrower`, so it owns the wait between
-  /// "dice are moving" and "dice have landed" and nothing else: the phase
-  /// machine, the sounds and the settlement stay there.
-  Future<void> _throw3d(List<Symbol> faces) async {
+  /// Handed to the controller as its `thrower`, so it owns when the dice are
+  /// released and when they land, and nothing else: the phase machine, the
+  /// sounds and the settlement stay there. [onThrowStart] is the controller's
+  /// rattle, played here - the instant the page launches - rather than up front,
+  /// so it is not spent during the page's load.
+  Future<void> _throw3d(List<Symbol> faces, VoidCallback onThrowStart) async {
     final DiceThrowBridge? bridge = _bridge;
     if (bridge == null) return;
 
@@ -103,10 +105,13 @@ class _RollScreenState extends State<RollScreen> {
       if (mounted) {
         setState(() => _show3d = false);
       }
+      onThrowStart();
       await Future<void>.delayed(const Duration(milliseconds: 950));
       return;
     }
 
+    // Every die is loaded, so the throw is about to leave the cup.
+    onThrowStart();
     await bridge.land(faces);
   }
 

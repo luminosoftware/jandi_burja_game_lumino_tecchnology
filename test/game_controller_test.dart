@@ -1,12 +1,12 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:janda_burja_game_app/core/config.dart';
-import 'package:janda_burja_game_app/logic/dice_roller.dart';
-import 'package:janda_burja_game_app/models/symbol.dart';
-import 'package:janda_burja_game_app/services/rewarded_ad_service.dart';
-import 'package:janda_burja_game_app/services/storage_service.dart';
-import 'package:janda_burja_game_app/state/game_controller.dart';
+import 'package:jhanda_burja_game_app/core/config.dart';
+import 'package:jhanda_burja_game_app/logic/dice_roller.dart';
+import 'package:jhanda_burja_game_app/models/symbol.dart';
+import 'package:jhanda_burja_game_app/services/rewarded_ad_service.dart';
+import 'package:jhanda_burja_game_app/services/storage_service.dart';
+import 'package:jhanda_burja_game_app/state/game_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Opens a controller over fresh in-memory preferences, muted so no audio
@@ -19,7 +19,6 @@ Future<GameController> openController({
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final StorageService storage = await StorageService.open();
   await storage.saveSoundEnabled(false);
-  await storage.saveHapticsEnabled(false);
   if (balance != null) await storage.saveBalance(balance);
   final GameController controller = GameController(
     storage: storage,
@@ -107,13 +106,12 @@ void main() {
     },
   );
 
-  test('preloading the tap sounds cannot break a game with no audio', () async {
+  test('preloading the sounds cannot break a game with no audio', () async {
     // Warming happens at start-up on every device, and on a device with no
     // working audio plugin every one of those loads fails. None of it may reach
     // the player as an error, a hang, or a chip that stops being placed.
     SharedPreferences.setMockInitialValues(<String, Object>{
       'sound_enabled': true,
-      'haptics_enabled': false,
     });
     final StorageService storage = await StorageService.open();
     final GameController c = GameController(
@@ -249,16 +247,14 @@ void main() {
     broke.dispose();
   });
 
-  test('sound and haptics preferences persist', () async {
+  test('sound preference persists', () async {
     final GameController c = await openController();
     expect(c.soundEnabled, isFalse, reason: 'the harness starts muted');
 
     await c.setSoundEnabled(true);
-    await c.setHapticsEnabled(true);
 
     final StorageService storage = await StorageService.open();
     expect(storage.loadSoundEnabled(false), isTrue);
-    expect(storage.loadHapticsEnabled(false), isTrue);
     c.dispose();
   });
 

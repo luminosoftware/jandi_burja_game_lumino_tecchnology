@@ -1,8 +1,25 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// 1. Read the key.properties file from the root android folder
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+require(keystorePropertiesFile.exists()) {
+    "Missing android/key.properties. Configure the upload keystore before a release build."
+}
+keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+fun requiredSigningProperty(name: String): String =
+    requireNotNull(keystoreProperties.getProperty(name)) {
+        "Missing '$name' in android/key.properties."
+    }
 
 android {
     namespace = "com.jandaburja.game"
@@ -26,11 +43,28 @@ android {
         versionName = flutter.versionName
     }
 
+    // 2. Set up the secure release signing configuration
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file(requiredSigningProperty("storeFile"))
+            require(keystoreFile.exists()) {
+                "Upload keystore not found at ${keystoreFile.path}. Check storeFile in android/key.properties."
+            }
+            storeFile = keystoreFile
+            storePassword = requiredSigningProperty("storePassword")
+            keyAlias = requiredSigningProperty("keyAlias")
+            keyPassword = requiredSigningProperty("keyPassword")
+        }
+    }
+
+
+
+
+
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

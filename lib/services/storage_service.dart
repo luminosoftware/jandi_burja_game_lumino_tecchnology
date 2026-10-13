@@ -18,7 +18,6 @@ class StorageService {
   static const String _kLastBets = 'last_bets';
   static const String _kStats = 'stats';
   static const String _kSound = 'sound_enabled';
-  static const String _kHaptics = 'haptics_enabled';
   static const String _kThrow3d = 'throw_3d';
   static const String _kAgeAck = 'age_acknowledged';
 
@@ -113,12 +112,6 @@ class StorageService {
   bool loadSoundEnabled(bool fallback) => _prefs.getBool(_kSound) ?? fallback;
 
   Future<void> saveSoundEnabled(bool value) => _prefs.setBool(_kSound, value);
-
-  bool loadHapticsEnabled(bool fallback) =>
-      _prefs.getBool(_kHaptics) ?? fallback;
-
-  Future<void> saveHapticsEnabled(bool value) =>
-      _prefs.setBool(_kHaptics, value);
 
   bool loadThrow3d(bool fallback) => _prefs.getBool(_kThrow3d) ?? fallback;
 

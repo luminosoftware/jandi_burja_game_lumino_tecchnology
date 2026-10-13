@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <!-- Required by the Google Mobile Ads SDK to fetch ads. The game itself
          is fully playable offline; only the optional watch-an-ad refill needs
          network access. -->
@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="Janda Burja"
+        android:label="Jhanda Burja"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -25,14 +25,13 @@
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />
-        <!-- AdMob application id.
-             THIS IS GOOGLE'S OFFICIAL TEST ID. It serves dummy ads and earns no
-             revenue. It is intentional during development: shipping with test ids
-             gets an AdMob account suspended.
-             To go live, replace the value below with your own AdMob app id. -->
+        <!-- AdMob application ID for Jhanda Burja. Confirm it matches the Android
+             app registered in the AdMob account before publishing. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-2829352214511086~5048648201" />
+
+                            
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -60,6 +59,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

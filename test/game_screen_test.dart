@@ -2,19 +2,19 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:janda_burja_game_app/core/config.dart';
-import 'package:janda_burja_game_app/core/theme.dart';
-import 'package:janda_burja_game_app/logic/dice_roller.dart';
-import 'package:janda_burja_game_app/models/symbol.dart';
-import 'package:janda_burja_game_app/services/rewarded_ad_service.dart';
-import 'package:janda_burja_game_app/services/storage_service.dart';
-import 'package:janda_burja_game_app/state/game_controller.dart';
-import 'package:janda_burja_game_app/ui/screens/disclosure_gate.dart';
-import 'package:janda_burja_game_app/ui/screens/game_screen.dart';
-import 'package:janda_burja_game_app/ui/screens/roll_screen.dart';
-import 'package:janda_burja_game_app/ui/widgets/die_face_view.dart';
-import 'package:janda_burja_game_app/ui/widgets/hero_card.dart';
-import 'package:janda_burja_game_app/ui/widgets/symbol_icon.dart';
+import 'package:jhanda_burja_game_app/core/config.dart';
+import 'package:jhanda_burja_game_app/core/theme.dart';
+import 'package:jhanda_burja_game_app/logic/dice_roller.dart';
+import 'package:jhanda_burja_game_app/models/symbol.dart';
+import 'package:jhanda_burja_game_app/services/rewarded_ad_service.dart';
+import 'package:jhanda_burja_game_app/services/storage_service.dart';
+import 'package:jhanda_burja_game_app/state/game_controller.dart';
+import 'package:jhanda_burja_game_app/ui/screens/disclosure_gate.dart';
+import 'package:jhanda_burja_game_app/ui/screens/game_screen.dart';
+import 'package:jhanda_burja_game_app/ui/screens/roll_screen.dart';
+import 'package:jhanda_burja_game_app/ui/widgets/die_face_view.dart';
+import 'package:jhanda_burja_game_app/ui/widgets/hero_card.dart';
+import 'package:jhanda_burja_game_app/ui/widgets/symbol_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_dice_bridge.dart';
@@ -23,9 +23,9 @@ import 'support/fake_dice_bridge.dart';
 /// so the whole game loop can be exercised on the Dart VM where the real AdMob
 /// SDK and audio plugin do not exist.
 ///
-/// Sound and haptics are persisted off: `AudioService` swallows platform
-/// channel errors, but silencing at the preference level keeps the test output
-/// clean and guarantees no audio is attempted.
+/// Sound is persisted off: `AudioService` swallows platform channel errors, but
+/// silencing at the preference level keeps the test output clean and guarantees
+/// no audio is attempted.
 Future<GameController> buildController({
   FakeRewardedAdService? ads,
   int seed = 7,
@@ -34,7 +34,6 @@ Future<GameController> buildController({
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final StorageService storage = await StorageService.open();
   await storage.saveSoundEnabled(false);
-  await storage.saveHapticsEnabled(false);
   if (startingBalance != null) await storage.saveBalance(startingBalance);
 
   final GameController controller = GameController(
@@ -360,7 +359,7 @@ void main() {
     c.dispose();
   });
 
-  testWidgets('the bet line centres its label and stacks the amount below', (
+  testWidgets('the bet line centres its label and amount on one line', (
     WidgetTester tester,
   ) async {
     final GameController c = await buildController();
@@ -371,7 +370,7 @@ void main() {
     final Rect empty = tester.getRect(line);
 
     // Nothing staged: the label on its own. A zero the player has to interpret
-    // is not a helpful line, so the slot is left empty until it means something.
+    // is not a helpful line, so the number is left off until it means something.
     expect(find.text('You are betting'), findsOneWidget);
     expect(
       find.descendant(of: line, matching: find.text('0')),
@@ -396,19 +395,27 @@ void main() {
       find.descendant(of: line, matching: find.text('10')),
     );
     expect(
-      amount.top,
-      greaterThanOrEqualTo(label.bottom),
-      reason: 'the amount is on its own line below the label',
+      amount.top < label.bottom && label.top < amount.bottom,
+      isTrue,
+      reason: 'the amount shares the label line rather than stacking under it',
     );
-    // The coin and its number are centred as a pair, so the number itself sits
-    // right of centre: it is the pair a player sees as one thing.
+    expect(
+      label.right,
+      lessThanOrEqualTo(amount.left),
+      reason: 'the amount sits to the right of the label',
+    );
+
+    // The label, coin and amount are centred as one line, so the group's middle
+    // lands on the middle of the bet line.
     final Rect coin = tester.getRect(
       find.descendant(of: line, matching: find.byType(SymbolIcon)),
     );
+    expect(coin.left, greaterThanOrEqualTo(label.right));
+    expect(coin.right, lessThanOrEqualTo(amount.left));
     expect(
-      (coin.left + amount.right) / 2,
+      (label.left + amount.right) / 2,
       closeTo(empty.center.dx, 1),
-      reason: 'the coin and the amount are centred under the label',
+      reason: 'the label and amount are centred as a pair',
     );
     c.dispose();
   });
@@ -526,7 +533,7 @@ void main() {
     c.dispose();
   });
 
-  testWidgets('stats and rules screens open from the game screen', (
+  testWidgets('stats and about screens open from the game screen', (
     WidgetTester tester,
   ) async {
     useTallViewport(tester);
@@ -534,17 +541,59 @@ void main() {
     await tester.pumpWidget(wrap(c));
     await tester.pump();
 
-    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.tap(find.byTooltip('Menu'));
     await tester.pumpAndSettle();
-    expect(find.text('How to play'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ListTile, 'About Us'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'About Us'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.insights_outlined));
+    await tester.tap(find.widgetWithText(ListTile, 'Statistics'));
     await tester.pumpAndSettle();
-    expect(find.text('Statistics'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Statistics'), findsOneWidget);
     expect(find.textContaining('No rounds played yet'), findsOneWidget);
+    c.dispose();
+  });
+
+  testWidgets('About Us names the developer and how to reach them', (
+    WidgetTester tester,
+  ) async {
+    useTallViewport(tester);
+    final GameController c = await buildController();
+    await tester.pumpWidget(wrap(c));
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'About Us'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(AppConfig.companyName), findsOneWidget);
+    expect(find.text(AppConfig.companyAddress), findsOneWidget);
+    expect(find.text(AppConfig.supportEmail), findsOneWidget);
+    c.dispose();
+  });
+
+  testWidgets('settings links to the rules screen', (
+    WidgetTester tester,
+  ) async {
+    useTallViewport(tester);
+    final GameController c = await buildController();
+    await tester.pumpWidget(wrap(c));
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('How to play'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AppBar, 'How to play'), findsOneWidget);
+    expect(find.textContaining('86.13%'), findsOneWidget);
     c.dispose();
   });
 
@@ -556,7 +605,11 @@ void main() {
     await tester.pumpWidget(wrap(c));
     await tester.pump();
 
-    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.tap(find.byTooltip('Menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('How to play'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('86.13%'), findsOneWidget);
@@ -574,7 +627,11 @@ void main() {
     await tester.pumpWidget(wrap(c));
     await tester.pump();
 
-    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.tap(find.byTooltip('Menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('How to play'));
     await tester.pumpAndSettle();
 
     for (final Symbol s in Symbol.values) {
@@ -644,33 +701,28 @@ void main() {
     second.dispose();
   });
 
-  testWidgets('settings toggles sound and haptics', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('settings toggles sound', (WidgetTester tester) async {
     useTallViewport(tester);
     final GameController c = await buildController();
     expect(c.soundEnabled, isFalse, reason: 'the harness starts muted');
 
     await tester.pumpWidget(wrap(c));
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.tune));
+    await tester.tap(find.byTooltip('Menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Settings'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Settings'), findsOneWidget);
 
-    // The switches are driven by the controller, so a stale control would
-    // still report the new model value while showing the wrong position.
+    // The switch is driven by the controller, so a stale control would still
+    // report the new model value while showing the wrong position.
     expect(_switchValue(tester, 'Sound effects'), isFalse);
 
     await tester.tap(find.text('Sound effects'));
     await tester.pumpAndSettle();
     expect(c.soundEnabled, isTrue);
     expect(_switchValue(tester, 'Sound effects'), isTrue);
-
-    await tester.tap(find.text('Vibration'));
-    await tester.pumpAndSettle();
-    expect(c.hapticsEnabled, isTrue);
-    expect(_switchValue(tester, 'Vibration'), isTrue);
     c.dispose();
   });
 
@@ -738,24 +790,6 @@ void main() {
     );
 
     await finishRound(tester);
-    c.dispose();
-  });
-
-  testWidgets('settings links to the rules screen', (
-    WidgetTester tester,
-  ) async {
-    useTallViewport(tester);
-    final GameController c = await buildController();
-    await tester.pumpWidget(wrap(c));
-    await tester.pump();
-
-    await tester.tap(find.byIcon(Icons.tune));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('How to play'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('How to play'), findsWidgets);
-    expect(find.textContaining('86.13%'), findsOneWidget);
     c.dispose();
   });
 
@@ -871,10 +905,10 @@ void main() {
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      // Both sides are labelled and the switch sits between them, off.
+      // Both sides are labelled and sit inside one switch, off to start with.
+      expect(find.byKey(const Key('diceStyleSwitch')), findsOneWidget);
       expect(find.text('2D'), findsOneWidget);
       expect(find.text('3D'), findsOneWidget);
-      expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
       expect(c.throw3d, isFalse);
 
       // The throw is a single control now: no second button beside it.
@@ -897,15 +931,8 @@ void main() {
       await tester.pump();
 
       expect(c.throw3d, isTrue);
-      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
 
-      // The switch itself toggles back, and the 2D label selects 2D too.
-      await tester.tap(find.byType(Switch));
-      await tester.pump();
-      expect(c.throw3d, isFalse);
-
-      await tester.tap(find.text('3D'));
-      await tester.pump();
+      // The other half of the same switch selects 2D again.
       await tester.tap(find.text('2D'));
       await tester.pump();
       expect(c.throw3d, isFalse);
@@ -958,7 +985,7 @@ void main() {
       await tester.pumpWidget(wrap(c));
       await tester.pump();
 
-      expect(find.byType(Switch), findsOneWidget);
+      expect(find.byKey(const Key('diceStyleSwitch')), findsOneWidget);
       final Size roll = tester.getSize(
         find.widgetWithText(FilledButton, 'ROLL THE DICE'),
       );

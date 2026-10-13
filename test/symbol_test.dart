@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:janda_burja_game_app/models/symbol.dart';
+import 'package:jhanda_burja_game_app/models/symbol.dart';
 
 /// The 3D page prints its faces from `SYMBOLS`, a fixed table baked into the
 /// page's own art. [Symbol.dieNumber] is the only bridge between that table and

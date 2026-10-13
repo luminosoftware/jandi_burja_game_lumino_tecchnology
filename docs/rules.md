@@ -1,6 +1,6 @@
-# Janda Burja — rules and economics
+# Jhanda Burja — rules and economics
 
-Janda Burja (also called Crown and Anchor) is a six-dice game of chance. This
+Jhanda Burja (also called Crown and Anchor) is a six-dice game of chance. This
 document is the single source of truth for how the game is scored and why the
 payout table is what it is. The code in `lib/logic/` implements exactly what is
 written here, and the tests in `test/` assert every figure below.
