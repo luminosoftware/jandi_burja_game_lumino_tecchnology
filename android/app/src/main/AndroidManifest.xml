@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:label="Jhanda Burja"
+        android:label="Jhandi Munda"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -25,7 +25,7 @@
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />
-        <!-- AdMob application ID for Jhanda Burja. Confirm it matches the Android
+        <!-- AdMob application ID for Jhandi Munda. Confirm it matches the Android
              app registered in the AdMob account before publishing. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"

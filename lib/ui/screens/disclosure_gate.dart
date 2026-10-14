@@ -87,7 +87,7 @@ class _DisclosureDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(
-                'Jhanda Burja is a game of chance. It is played with coins that '
+                'Jhandi Munda is a game of chance. It is played with coins that '
                 'have no monetary value and cannot be bought or cashed out.',
                 style: TextStyle(color: GameColors.cream, height: 1.4),
               ),

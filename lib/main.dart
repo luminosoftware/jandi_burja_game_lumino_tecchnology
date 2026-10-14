@@ -36,11 +36,11 @@ Future<void> main() async {
   );
 
   await controller.initialise();
-  runApp(JhandaBurjaApp(controller: controller));
+  runApp(JhandiMundaApp(controller: controller));
 }
 
-class JhandaBurjaApp extends StatelessWidget {
-  const JhandaBurjaApp({super.key, required this.controller});
+class JhandiMundaApp extends StatelessWidget {
+  const JhandiMundaApp({super.key, required this.controller});
 
   final GameController controller;
 
@@ -68,7 +68,7 @@ class BootstrapErrorApp extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.all(28),
             child: Text(
-              'Jhanda Burja could not start on this device.\n\n'
+              'Jhandi Munda could not start on this device.\n\n'
               'Please restart the app.',
               textAlign: TextAlign.center,
             ),

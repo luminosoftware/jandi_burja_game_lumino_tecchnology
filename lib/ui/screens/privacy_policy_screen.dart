@@ -4,13 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 
-/// Privacy policy for Jhanda Burja.
+/// Privacy policy for Jhandi Munda.
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
   static const String _intro =
       'This Privacy Policy explains how Lumino Technology Pvt. Ltd. handles '
-      'information when you use Jhanda Burja. The developer does not operate '
+      'information when you use Jhandi Munda. The developer does not operate '
       'an account system or collect personal information directly through the '
       'game. Google Mobile Ads may process information to provide and measure '
       'advertising, as described below.';
@@ -125,7 +125,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             title: "Children's Privacy",
             children: <Widget>[
               const Text(
-                'Jhanda Burja is intended for adults aged 18 and over and includes '
+                'Jhandi Munda is intended for adults aged 18 and over and includes '
                 'simulated betting using virtual coins with no cash value. The '
                 'first-launch notice asks players to acknowledge this, but the game '
                 'does not collect a date of birth or independently verify age. The '

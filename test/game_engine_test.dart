@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jhanda_burja_game_app/core/config.dart';
-import 'package:jhanda_burja_game_app/logic/game_engine.dart';
-import 'package:jhanda_burja_game_app/logic/wallet.dart';
-import 'package:jhanda_burja_game_app/models/bet.dart';
-import 'package:jhanda_burja_game_app/models/symbol.dart';
+import 'package:jhandi_munda_game_app/core/config.dart';
+import 'package:jhandi_munda_game_app/logic/game_engine.dart';
+import 'package:jhandi_munda_game_app/logic/wallet.dart';
+import 'package:jhandi_munda_game_app/models/bet.dart';
+import 'package:jhandi_munda_game_app/models/symbol.dart';
 
 /// Builds a roll containing [counts] copies of each given symbol, padding with
 /// the first symbol supplied so the list is always the right length.

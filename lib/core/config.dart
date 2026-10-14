@@ -7,7 +7,7 @@
 class AppConfig {
   const AppConfig._();
 
-  static const String appName = 'Jhanda Burja';
+  static const String appName = 'Jhandi Munda';
 
   // ---------------------------------------------------------------- company
   /// The studio behind the game, named on the About screen.

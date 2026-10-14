@@ -1,4 +1,4 @@
-# Jhanda Burja
+# Jhandi Munda
 
 An Android dice game of chance in the Jhandi Munda / Crown and Anchor
 tradition. Six dice, six symbols, play-money coins, and optional rewarded ads to

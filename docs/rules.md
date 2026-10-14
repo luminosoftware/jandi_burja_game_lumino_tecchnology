@@ -1,6 +1,6 @@
-# Jhanda Burja — rules and economics
+# Jhandi Munda — rules and economics
 
-Jhanda Burja (also called Crown and Anchor) is a six-dice game of chance. This
+Jhandi Munda (also called Crown and Anchor) is a six-dice game of chance. This
 document is the single source of truth for how the game is scored and why the
 payout table is what it is. The code in `lib/logic/` implements exactly what is
 written here, and the tests in `test/` assert every figure below.

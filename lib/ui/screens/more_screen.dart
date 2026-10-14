@@ -72,7 +72,7 @@ class MoreScreen extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('About Us'),
-                subtitle: const Text('Who makes Jhanda Burja and how to reach us'),
+                subtitle: const Text('Who makes Jhandi Munda and how to reach us'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(

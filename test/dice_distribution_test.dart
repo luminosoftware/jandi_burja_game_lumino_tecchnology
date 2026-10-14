@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jhanda_burja_game_app/core/config.dart';
-import 'package:jhanda_burja_game_app/logic/dice_roller.dart';
-import 'package:jhanda_burja_game_app/logic/payout_table.dart';
-import 'package:jhanda_burja_game_app/models/symbol.dart';
+import 'package:jhandi_munda_game_app/core/config.dart';
+import 'package:jhandi_munda_game_app/logic/dice_roller.dart';
+import 'package:jhandi_munda_game_app/logic/payout_table.dart';
+import 'package:jhandi_munda_game_app/models/symbol.dart';
 
 void main() {
   group('DiceRoller', () {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jhanda_burja_game_app/state/game_controller.dart';
-import 'package:jhanda_burja_game_app/ui/screens/dice_lab_screen.dart';
-import 'package:jhanda_burja_game_app/ui/screens/dice_lab_web.dart';
-import 'package:jhanda_burja_game_app/ui/screens/more_screen.dart';
-import 'package:jhanda_burja_game_app/ui/widgets/symbol_icon.dart';
+import 'package:jhandi_munda_game_app/state/game_controller.dart';
+import 'package:jhandi_munda_game_app/ui/screens/dice_lab_screen.dart';
+import 'package:jhandi_munda_game_app/ui/screens/dice_lab_web.dart';
+import 'package:jhandi_munda_game_app/ui/screens/more_screen.dart';
+import 'package:jhandi_munda_game_app/ui/widgets/symbol_icon.dart';
 
 import 'game_screen_test.dart' show buildController;
 

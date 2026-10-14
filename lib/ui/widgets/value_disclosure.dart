@@ -18,7 +18,7 @@ class ValueDisclosure extends StatelessWidget {
   static const String heading = '18+  ·  Free to play  ·  No real money';
 
   static const String body =
-      'Jhanda Burja is a game of chance played with coins that exist only '
+      'Jhandi Munda is a game of chance played with coins that exist only '
       'inside this app. There is no way to buy coins with money, and no way '
       'to cash out coins or prizes of any kind. Winning has no monetary '
       'value whatsoever.';

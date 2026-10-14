@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 
-/// Who makes Jhanda Burja, what it is, and how to reach the studio.
+/// Who makes Jhandi Munda, what it is, and how to reach the studio.
 ///
 /// Deliberately not the rules screen. The payout table, the odds and the symbol
 /// key used to live behind this tile and no longer do; everything on this page
@@ -14,8 +14,8 @@ class AboutScreen extends StatelessWidget {
 
   /// A short, plain-language description of the game.
   static const String intro =
-      'Jhanda Burja is a modern take on Jhandi Munda, the traditional Nepali '
-      'dice game of chance. Six dice, six symbols and one green felt table: '
+      'Jhandi Munda is the traditional Nepali dice game of chance, also known '
+      'as Crown and Anchor. Six dice, six symbols and one green felt table: '
       'place your coins on the symbols you believe in, then throw and hope two '
       'or more dice land your way. Free to play with virtual coins that carry '
       'no cash value. The game works offline; ads require an internet connection.';

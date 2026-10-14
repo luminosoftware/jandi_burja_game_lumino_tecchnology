@@ -1,12 +1,12 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jhanda_burja_game_app/core/config.dart';
-import 'package:jhanda_burja_game_app/logic/dice_roller.dart';
-import 'package:jhanda_burja_game_app/models/symbol.dart';
-import 'package:jhanda_burja_game_app/services/rewarded_ad_service.dart';
-import 'package:jhanda_burja_game_app/services/storage_service.dart';
-import 'package:jhanda_burja_game_app/state/game_controller.dart';
+import 'package:jhandi_munda_game_app/core/config.dart';
+import 'package:jhandi_munda_game_app/logic/dice_roller.dart';
+import 'package:jhandi_munda_game_app/models/symbol.dart';
+import 'package:jhandi_munda_game_app/services/rewarded_ad_service.dart';
+import 'package:jhandi_munda_game_app/services/storage_service.dart';
+import 'package:jhandi_munda_game_app/state/game_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Opens a controller over fresh in-memory preferences, muted so no audio

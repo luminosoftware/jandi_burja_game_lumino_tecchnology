@@ -22,7 +22,7 @@ fun requiredSigningProperty(name: String): String =
     }
 
 android {
-    namespace = "com.jandaburja.game"
+    namespace = "com.luminotechnology.jhandimunda.game"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -34,7 +34,7 @@ android {
     defaultConfig {
         // Permanent identifier: Google Play forbids changing applicationId after
         // the first upload. Chosen once, deliberately.
-        applicationId = "com.jandaburja.game"
+        applicationId = "com.luminotechnology.jhandimunda.game"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -56,11 +56,6 @@ android {
             keyPassword = requiredSigningProperty("keyPassword")
         }
     }
-
-
-
-
-
 
     buildTypes {
         release {

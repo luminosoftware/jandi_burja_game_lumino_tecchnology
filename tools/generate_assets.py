@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the bundled binary assets that ship with Jhanda Burja.
+"""Generates the bundled binary assets that ship with Jhandi Munda.
 
 Everything here is synthesised from scratch with the Python standard library
 plus Pillow, so the build has no network dependency and no licensing questions.
