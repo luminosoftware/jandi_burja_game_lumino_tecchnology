@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'core/config.dart';
 import 'core/theme.dart';
 import 'services/rewarded_ad_service.dart';
